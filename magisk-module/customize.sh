@@ -62,12 +62,23 @@ rm -rf "$test_dir"
 
 if $is_support; then
     ui_print "- Directly use folder in /data"
+    // clone dummy
+    ui_print "- Clone dummy skeletion for /system ..."
     mkdir -p /data/adb/overlay/upper/system
     magisk --clone-attr /system /data/adb/overlay/upper/system
+    find /system/ -type d | while read line; do
+        mkdir "/data/adb/overlay/upper$line"
+        magisk --clone-attr "$line" "/data/adb/overlay/upper$line"
+    done
     for part in /vendor /product /system_ext; do
         mountpoint -q $part || continue
+        ui_print "- Clone dummy skeleton for $part ..."
         mkdir -p /data/adb/overlay/upper$part
         magisk --clone-attr $part /data/adb/overlay/upper$part
+        find $part/ -type d | while read line; do
+            mkdir "/data/adb/overlay/upper$line"
+            magisk --clone-attr "$line" "/data/adb/overlay/upper$line"
+        done
     done
     unzip -oj "$ZIPFILE" "libs/$ABI/overlayfs_system" overlayfs_mount.rc -d "$MAGISKTMP/.magisk/mirror/early-mount/initrc.d" 1>&2
     ui_print "- To uninstall overlayfs, remove these files:"
