@@ -1,6 +1,6 @@
-id=._this_is_not_really_a_module_.overlayfs
+id=magisk_overlayfs
 name=Magisk Overlayfs
 author=HuskyDG
-version=1.0
-versionCode=1
-description=Make system partition become read-only. Only support Magisk Delta!
+version=2.0
+versionCode=2000
+description=Make system partition become read-write. Kernel must support overlayfs!

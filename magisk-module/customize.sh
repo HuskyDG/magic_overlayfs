@@ -26,24 +26,7 @@ if ! $TMPDIR/overlayfs_system --test; then
     abort
 fi
 
-if ! (echo "$MAGISK_VER" | grep -q "\-delta"); then
-    abort "! Please install latest Magisk Delta"
-fi
-
-if [ "$MAGISK_VER_CODE" -lt 25206 ]; then
-    abort "! Please install Magisk Delta 25206+"
-fi
-
-MAGISKTMP="$(magisk --path)"
-if [ ! -d "$MAGISKTMP/.magisk/mirror/early-mount" ]; then
-    abort "! Unable to find early-mount.d"
-fi
-
-mkdir -p "$MAGISKTMP/.magisk/mirror/early-mount.d/initrc.d"
-
 unzip -o "$ZIPFILE" module.prop -d "$MODPATH" 1>&2
-
-CURRENTDIR="$(readlink "$MAGISKTMP/.magisk/mirror/early-mount" | sed "s/^.//g")"
 
 ui_print "- Test mounting..."
 is_support=false
@@ -80,16 +63,8 @@ if $is_support; then
             magisk --clone-attr "$line" "/data/adb/overlay/upper$line"
         done
     done
-    unzip -oj "$ZIPFILE" "libs/$ABI/overlayfs_system" overlayfs_mount.rc -d "$MAGISKTMP/.magisk/mirror/early-mount/initrc.d" 1>&2
-    ui_print "- To uninstall overlayfs, remove these files:"
-    ui_print "  /data/adb/overlay"
-    ui_print "  $CURRENTDIR/initrc.d/overlay_system"
-    ui_print "  $CURRENTDIR/initrc.d/overlay_mount.rc"
+    unzip -oj "$ZIPFILE" "libs/$ABI/overlayfs_system" uninstall.sh post-fs-data.sh -d "$MODPATH" 1>&2
 else
     abort "! Your data partition cannot be used as upperdir"
 fi
-chmod 777 "$MAGISKTMP/.magisk/mirror/early-mount/initrc.d/overlayfs_system"
-
-ui_print "- This is not a module and will not show in Magisk app"
-
-touch "$MODPATH/remove"
+chmod 777 "$MODPATH/overlayfs_system"

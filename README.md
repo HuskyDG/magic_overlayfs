@@ -1,6 +1,6 @@
 # Magisk Overlayfs (WIP)
 
-- Only support Magisk Delta for overlayfs compatible with modules.
+- ~~Only support Magisk Delta for overlayfs compatible with modules.~~
 - Make system partition (`/system`, `/vendor`, `/product`, `/system_ext`) become read-write.
 - Use `/data` as upperdir
 

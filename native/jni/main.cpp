@@ -241,6 +241,9 @@ int main(int argc, const char **argv) {
         printf("This is not folder %s\n", argv[1]);
         return 1;
     }
+    const char *mirrors =
+    (argc >= 3 && argv[2][0] == '/' && stat(argv[2], &z) == 0 && S_ISDIR(z.st_mode))?
+        argv[2] : nullptr;
     std::vector<string> mountpoint;
     // trim mountinfo
     tmp_dir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
@@ -337,9 +340,19 @@ int main(int argc, const char **argv) {
             std::reverse(mounted.begin(), mounted.end());
             for (auto &dir : mounted) {
                 umount2(dir.data(), MNT_DETACH);
+                if (mirrors != nullptr) {
+                    std::string mirror_dir = string(mirrors) + dir;
+                    umount2(mirror_dir.data(), MNT_DETACH);
+                }
             }
             CLEANUP
             return 1;
+        }
+        if (mirrors != nullptr) {
+            std::string mirror_dir = string(mirrors) + info;
+            mount(tmp_mount.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
+            mount("", mirror_dir.data(), nullptr, MS_PRIVATE, nullptr);
+            mount("", mirror_dir.data(), nullptr, MS_SHARED, nullptr);
         }
         mounted.emplace_back(info);
     }
