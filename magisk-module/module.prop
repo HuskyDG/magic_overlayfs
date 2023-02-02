@@ -1,0 +1,6 @@
+id=._this_is_not_really_a_module_.overlayfs
+name=Magisk Overlayfs
+author=HuskyDG
+version=1.0
+versionCode=1
+description=Make system partition become read-only. Only support Magisk Delta!

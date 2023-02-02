@@ -1,0 +1,34 @@
+name: Build Magisk module
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+        fetch-depth: 0
+    - name: SetupNDK
+      uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r24
+    - name: Build
+      id: build
+      run: |
+        chmod 777 ./build.sh
+        ./build.sh
+    - name: Upload release
+      uses: actions/upload-artifact@v3
+      with:
+        name: magisk-overlayfs-release
+        path: out/magisk-module
