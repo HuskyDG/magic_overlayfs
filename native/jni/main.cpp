@@ -188,10 +188,6 @@ int fake_return_mount(const char *a, const char *b, const char *c) {
     if (std::find(mountpoint.begin(), mountpoint.end(), "/" s) != mountpoint.end()) \
         mkdir(std::string(tmp_dir + "/" s).data(), 0755);
 
-#define BINDBACK(s) \
-    if (std::find(mountpoint.begin(), mountpoint.end(), "/" s) != mountpoint.end()) \
-       mount(std::string(tmp_dir + "/" s).data(), "/" s, nullptr, MS_BIND | MS_REC, nullptr);
-
 bool is_dir(const char *path) {
     struct stat st;
     return stat(path, &st) == 0 &&
@@ -261,6 +257,10 @@ int main(int argc, const char **argv) {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
         for (auto &info : current_mount_info) {
+            struct stat st;
+            // skip mount under another mounr
+            if (stat(info.target.data(), &st) || info.device != st.st_dev)
+                continue;
             if (UNDER("/system") ||
                  UNDER("/vendor") ||
                  UNDER("/system_ext") ||
@@ -328,10 +328,21 @@ int main(int argc, const char **argv) {
             }
         }
     }
-    BINDBACK("system")
-    BINDBACK("vendor")
-    BINDBACK("product")
-    BINDBACK("system_ext")
+    std::vector<string> mounted;
+    for (auto &info : mountpoint) {
+        std::string tmp_mount = tmp_dir + info;
+        if (mount(tmp_mount.data(), info.data(), nullptr, MS_BIND, nullptr)) {
+            printf("mount failed, abort!\n");
+            // revert all mounts
+            std::reverse(mounted.begin(), mounted.end());
+            for (auto &dir : mounted) {
+                umount2(dir.data(), MNT_DETACH);
+            }
+            CLEANUP
+            return 1;
+        }
+        mounted.emplace_back(info);
+    }
     printf("mount done!\n");
     CLEANUP
     return 0;
