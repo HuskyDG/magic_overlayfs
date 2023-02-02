@@ -1,6 +1,6 @@
 id=magisk_overlayfs
 name=Magisk Overlayfs
 author=HuskyDG
-version=2.0
-versionCode=2000
+version=2.1
+versionCode=2001
 description=Make system partition become read-write. Kernel must support overlayfs!
