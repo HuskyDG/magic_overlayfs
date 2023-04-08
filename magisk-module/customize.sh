@@ -46,32 +46,11 @@ fi
 
 unzip -o "$ZIPFILE" module.prop -d "$MODPATH" 1>&2
 
-ui_print "- Test mounting..."
-is_support=false
-test_dir="/data/.__$(head -c15 /dev/urandom | base64)"
-mkdir -p "$test_dir/lower"
-mkdir -p "$test_dir/upper"
-mkdir -p "$test_dir/worker"
-opts="lowerdir=$test_dir/lower,upperdir=$test_dir/upper,workdir=$test_dir/worker"
-mount -t overlay -o "$opts" overlay "$test_dir/lower"
-if mount | grep " $test_dir/lower " | grep -q " overlay "; then
-    is_support=true
-    umount -l "$test_dir/lower"
-fi
-rm -rf "$test_dir"
-
-
-if $is_support; then
-    ui_print "- Directly use folder in /data"
-    // clone dummy
-else
-    ui_print "- Cannot use folder in /data, use loop image"
-    if [ ! -f "/data/adb/overlay" ]; then
-        rm -rf "/data/adb/overlay"
-        ui_print "- Create 2GB ext4 loop image..."
-        dd if=/dev/zero of=/data/adb/overlay bs=1024 count=2000000
-        /system/bin/mkfs.ext4 /data/adb/overlay
-    fi
+if [ ! -f "/data/adb/overlay" ]; then
+    rm -rf "/data/adb/overlay"
+    ui_print "- Create 2GB ext4 loop image..."
+    dd if=/dev/zero of=/data/adb/overlay bs=1024 count=2000000
+    /system/bin/mkfs.ext4 /data/adb/overlay
 fi
 
 unzip -oj "$ZIPFILE" post-fs-data.sh service.sh "libs/$ABI/overlayfs_system" -d "$MODPATH" 1>&2
