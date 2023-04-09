@@ -9,6 +9,20 @@ There is two way:
 - Fork this repo and run github actions
 - Run `bash build.sh` (On Linux/WSL)
 
+## Overlayfs-based Magisk module
+
+- If you want to use overlayfs mount for your module, add these line to the end of `customize.sh`
+
+```bash
+if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
+    /data/adb/modules/magisk_overlayfs/overlayfs_system --test; then
+  ui_print "- Add support for overlayfs"
+  . /data/adb/modules/magisk_overlayfs/util_functions.sh
+  support_overlayfs
+  rm -rf "$MODPATH"/system
+fi
+```
+
 ## Bugreport
 
 - Please include `/cache/overlayfs.log`

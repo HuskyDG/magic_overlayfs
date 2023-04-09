@@ -53,6 +53,6 @@ if [ ! -f "/data/adb/overlay" ]; then
     /system/bin/mkfs.ext4 /data/adb/overlay
 fi
 
-unzip -oj "$ZIPFILE" post-fs-data.sh service.sh "libs/$ABI/overlayfs_system" -d "$MODPATH" 1>&2
+unzip -oj "$ZIPFILE" post-fs-data.sh service.sh util_functions.sh "libs/$ABI/overlayfs_system" -d "$MODPATH" 1>&2
 
 chmod 777 "$MODPATH/overlayfs_system"
