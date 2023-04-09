@@ -87,6 +87,7 @@ if [ ! -z "$OVERLAYLIST" ]; then
 fi
 
 # overlay_system <writeable-dir> <magisk-mirror>
+. "$MODDIR/mode.sh"
 
 if [ -z "$MAGISKTMP" ]; then
     # KernelSU

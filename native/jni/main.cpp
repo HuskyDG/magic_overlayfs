@@ -323,6 +323,7 @@ int main(int argc, const char **argv) {
     argv[1] = "/mnt/test";
     const char *mirrors = nullptr;
 #endif
+
     bool overlay = false;
     FILE *fp = fopen("/proc/filesystems", "re");
     if (fp) {
@@ -358,6 +359,10 @@ int main(int argc, const char **argv) {
         printf("Please tell me the full path of folder >:)\n");
         return 1;
     }
+
+    const char *OVERLAY_MODE_env = getenv("OVERLAY_MODE");
+    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
+
     struct stat z;
     if (stat(argv[1], &z)) {
         printf("%s does not exist!\n", argv[1]);
@@ -498,8 +503,13 @@ int main(int argc, const char **argv) {
             opts += upperdir;
             opts += ",workdir=";
             opts += workerdir;
-            if (mount("overlay", tmp_mount.data(), "overlay", MS_RDONLY, opts.data())) {
-                printf("mount failed, try read-only overlayfs...\n");
+            
+            // 0 - read-only
+            // 1 - read-write default
+            // 2 - read-only locked
+            
+            if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
+                printf("fall to read-only overlayfs...\n");
                 opts = "lowerdir=";
                 if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                     opts += masterdir + ":";
