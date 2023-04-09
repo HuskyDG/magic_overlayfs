@@ -54,6 +54,9 @@ if [ -d "$MODPATH/system" ]; then
     ( cd "$MODPATH" || exit 
       find "system" | while read line; do
         chcon "$(ls -Zd "$line" | awk '{ print $1 }')" "$MODPATH/overlay/$line"
+        if [ -e "$line/.replace" ]; then
+          setfattr -n trusted.overlay.opaque -v y "$MODPATH/overlay/$line"
+        fi
       done
     )
     
