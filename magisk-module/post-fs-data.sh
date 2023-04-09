@@ -1,10 +1,17 @@
 MODDIR="${0%/*}"
 
+MAGISKTMP="$(magisk --path)"
+
 chmod 777 "$MODDIR/overlayfs_system"
 
 OVERLAYDIR="/data/adb/overlay"
 OVERLAYMNT="/mnt/overlay_system"
-MODULEMNT="/mnt/overlay_modules"
+if [ -z "$MAGISKTMP" ];then
+    # KernelSU
+    MODULEMNT="/mnt/overlay_modules"
+else
+    MODULEMNT="$MAGISKTMP/overlay_modules"
+fi
 
 mv -fT /cache/overlayfs.log /cache/overlayfs.log.bak
 rm -rf /cache/overlayfs.log
@@ -81,19 +88,19 @@ fi
 
 # overlay_system <writeable-dir> <magisk-mirror>
 
-MAGISKTMP="$(magisk --path)"
-
 if [ -z "$MAGISKTMP" ]; then
     # KernelSU
     "$MODDIR/overlayfs_system" "$OVERLAYMNT" | tee -a /cache/overlayfs.log
+    umount -l "$MODULEMNT"
+    rmdir "$MODULEMNT"
 else
     "$MODDIR/overlayfs_system" "$OVERLAYMNT" "$MAGISKTMP/.magisk/mirror" | tee -a /cache/overlayfs.log
+    mkdir -p "$MAGISKTMP/overlayfs_mnt"
+    mount --bind "$OVERLAYMNT" "$MAGISKTMP/overlayfs_mnt"
 fi
     
 umount -l "$OVERLAYMNT"
-umount -l "$MODULEMNT"
 rmdir "$OVERLAYMNT"
-rmdir "$MODULEMNT"
 
 echo "--- Mountinfo ---" >>/cache/overlayfs.log
 cat /proc/mounts >>/cache/overlayfs.log

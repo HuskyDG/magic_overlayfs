@@ -28,6 +28,8 @@ if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
 fi
 ```
 
+- We mounted your overlay modules at `$MAGISKTMP/overlayfs_modules` so you can modify it without having to manually mount it
+
 ## Bugreport
 
 - Please include `/cache/overlayfs.log`
