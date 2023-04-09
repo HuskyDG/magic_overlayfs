@@ -15,6 +15,10 @@ There is two way:
 - If you want to use overlayfs mount for your module, add these line to the end of `customize.sh`
 
 ```bash
+
+OVERLAY_IMAGE_EXTRA=0     # number of kb need to be added to overlay.img
+OVERLAY_IMAGE_SHRINK=true # shrink overlay.img or not?
+
 if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
     /data/adb/modules/magisk_overlayfs/overlayfs_system --test; then
   ui_print "- Add support for overlayfs"
