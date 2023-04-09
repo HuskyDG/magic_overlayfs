@@ -5,6 +5,8 @@
 - Configure overlayfs mode in `mode.sh`
 - Support Magisk version 23.0+ and latest version of KernelSU
 
+> If you can't modify system files with MT File Manager, try using [Material Files](https://github.com/zhanghai/MaterialFiles) instead!
+
 ## Build
 
 There is two way:
