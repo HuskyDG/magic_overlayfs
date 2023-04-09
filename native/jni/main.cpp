@@ -448,6 +448,7 @@ int main(int argc, const char **argv) {
 
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
         std::string workerdir = std::string(argv[1]) + "/worker" + info;
+        std::string masterdir = std::string(argv[1]) + "/master" + info;
 #if !FAKE_CODE
         char *con;
         {
@@ -490,6 +491,8 @@ int main(int argc, const char **argv) {
         {
             std::string opts;
             opts += "lowerdir=";
+            if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
+                opts += masterdir + ":";
             opts += info.data();
             opts += ",upperdir=";
             opts += upperdir;
@@ -498,6 +501,8 @@ int main(int argc, const char **argv) {
             if (mount("overlay", tmp_mount.data(), "overlay", MS_RDONLY, opts.data())) {
                 printf("mount failed, try read-only overlayfs...\n");
                 opts = "lowerdir=";
+                if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
+                    opts += masterdir + ":";
                 opts += upperdir;
                 opts += ":";
                 opts += info.data();

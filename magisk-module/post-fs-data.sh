@@ -77,13 +77,13 @@ done
 mkdir -p "$OVERLAYMNT/upper"
 mkdir -p "$OVERLAYMNT/worker"
 
-rm -rf "$OVERLAYMNT/.module_work"
-mkdir -p "$OVERLAYMNT/.module_work"
+rm -rf "$OVERLAYMNT/master"
+mkdir -p "$OVERLAYMNT/master"
 
 if [ ! -z "$OVERLAYLIST" ]; then
     OVERLAYLIST="${OVERLAYLIST::-1}"
     echo "mount overlayfs list: [$OVERLAYLIST]" >>/cache/overlayfs.log
-    mount -t overlay -o lowerdir="$OVERLAYLIST",upperdir="$OVERLAYMNT/upper",workdir="$OVERLAYMNT/.module_work" overlay "$OVERLAYMNT/upper"
+    mount -t overlay -o lowerdir="$OVERLAYMNT/upper:$OVERLAYLIST" overlay "$OVERLAYMNT/master"
 fi
 
 # overlay_system <writeable-dir> <magisk-mirror>
