@@ -14,6 +14,7 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/vfs.h>
 
 int mkdirs(const char *path, int mode) {
     char s[strlen(path) + 1];
@@ -345,6 +346,13 @@ int main(int argc, const char **argv) {
         return 1;
     }
     if (strcmp(argv[1], "--test") == 0) {
+    	argc--;
+    	argv++;
+    	if (argc >= 3 && strcmp(argv[1], "--check-ext4") == 0) {
+            struct statfs stfs{};
+            return (statfs(argv[2], &stfs) == 0 && stfs.f_type == EXT4_SUPER_MAGIC)?
+                0 : 1;
+        }
         return 0;
     } else if (argv[1][0] != '/') {
         printf("Please tell me the full path of folder >:)\n");
