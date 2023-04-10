@@ -8,6 +8,11 @@ chmod 777 "$MODDIR/overlayfs_system"
 
 OVERLAYDIR="/data/adb/overlay"
 OVERLAYMNT="/mnt/overlay_system"
+
+if [ ! -e "/mnt/vendor/system" ]; then
+    OVERLAYMNT="/mnt/vendor/system"
+fi
+
 if [ -z "$MAGISKTMP" ];then
     # KernelSU
     MODULEMNT="/mnt/overlay_modules"
