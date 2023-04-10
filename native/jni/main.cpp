@@ -434,16 +434,9 @@ int main(int argc, const char **argv) {
     MAKEDIR("system_ext")
     MAKEDIR("product")
 
-    // remove folder that is mounted
-    for (auto info = mount_list.begin(); info != mount_list.end(); info++) {
-   	    if (std::find(mountpoint.begin(), mountpoint.end(), *info) != mountpoint.end()) {
-   	        mount_list.erase(info);
-   	        info--;
-   	    }
-    }
-
     mountpoint.clear();
 
+    // mount overlayfs for subdirectories of /system /vendor /product /system_ext
     std::reverse(mountinfo.begin(), mountinfo.end());
     for (auto &info : mount_list) {
         struct stat st;
@@ -517,23 +510,20 @@ int main(int argc, const char **argv) {
                 opts += ":";
                 opts += info.data();
                 if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
-                    printf("mount failed, use mount bind to restore...\n");
-                    if (mount(info.data(), tmp_mount.data(), nullptr, MS_BIND, nullptr)) {
-                        printf("mount failed, abort!\n");
-                        CLEANUP
-                        return 1;
-                    }
+                    printf("mount overlayfs failed, ignore!\n");
+                    continue;
                 }
             }
         }
         mountpoint.emplace_back(info);
     }
 
-    // rebind stock mount
+    // restore stock mounts if possible
     for (auto &mnt : mountinfo) {
         auto info = mnt.target;
         std::string tmp_mount = tmp_dir + info;
         for (auto &s : mount_list) {
+            // only care about mountpoint under overlayfs mounted subdirectories
        	    if (!starts_with(info.data(), string(info + "/").data()))
        	        continue;
             if (mount(info.data(), tmp_mount.data(), nullptr, MS_BIND, nullptr)) {
