@@ -29,7 +29,9 @@ sizeof(){
 
 handle() {
   if [ ! -L "/$1" ] && [ -d "/$1" ] && [ -d "$MODPATH/system/$1" ]; then
+    rm -rf "$MODPATH/overlay/$1"
     mv -f "$MODPATH/overlay/system/$1" "$MODPATH/overlay"
+    ln -s "../$1" "$MODPATH/overlay/system/$1"
   fi
 }
 
@@ -84,7 +86,7 @@ loop_setup() {
   local MINORX=1
   [ -e /dev/block/loop1 ] && MINORX=\$(stat -Lc '%T' /dev/block/loop1)
   local NUM=0
-  while [ \$NUM -lt 1024 ]; do
+  while [ \$NUM -lt 2048 ]; do
     LOOP=/dev/block/loop\$NUM
     [ -e \$LOOP ] || mknod \$LOOP b 7 \$((NUM * MINORX))
     if losetup \$LOOP "\$1" 2>/dev/null; then
