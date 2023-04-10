@@ -76,9 +76,9 @@ OVERLAYLIST=""
 
 for i in "$MODULEMNT"/*; do
     [ ! -e "$i" ] && break;
-	if "$MODDIR/overlayfs_system" --test --check-ext4 "$i"; then
-	    OVERLAYLIST="$i:$OVERLAYLIST"
-	fi
+    if "$MODDIR/overlayfs_system" --test --check-ext4 "$i"; then
+        OVERLAYLIST="$i:$OVERLAYLIST"
+    fi
 done
 
 mkdir -p "$OVERLAYMNT/upper"
@@ -99,16 +99,28 @@ fi
 if [ -z "$MAGISKTMP" ]; then
     # KernelSU
     "$MODDIR/overlayfs_system" "$OVERLAYMNT" | tee -a /cache/overlayfs.log
-    umount -l "$MODULEMNT"
-    rmdir "$MODULEMNT"
 else
     "$MODDIR/overlayfs_system" "$OVERLAYMNT" "$MAGISKTMP/.magisk/mirror" | tee -a /cache/overlayfs.log
     mkdir -p "$MAGISKTMP/overlayfs_mnt"
     mount --bind "$OVERLAYMNT" "$MAGISKTMP/overlayfs_mnt"
 fi
-    
-umount -l "$OVERLAYMNT"
-rmdir "$OVERLAYMNT"
 
-echo "--- Mountinfo ---" >>/cache/overlayfs.log
-cat /proc/mounts >>/cache/overlayfs.log
+rm -rf /dev/.overlayfs_service_unblock
+(
+    # block until /dev/.overlayfs_service_unblock
+    while [ ! -e "/dev/.overlayfs_service_unblock" ]; do
+        sleep 1
+    done
+    rm -rf /dev/.overlayfs_service_unblock
+    if [ -z "$MAGISKTMP" ]; then
+        # KernelSU
+        umount -l "$MODULEMNT"
+        rmdir "$MODULEMNT"
+    fi
+    umount -l "$OVERLAYMNT"
+    rmdir "$OVERLAYMNT"
+
+    echo "--- Mountinfo ---" >>/cache/overlayfs.log
+    cat /proc/mounts >>/cache/overlayfs.log
+) &
+
