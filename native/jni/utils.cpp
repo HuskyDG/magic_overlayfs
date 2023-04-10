@@ -132,7 +132,8 @@ int dump_file(const char *src, const char *dest) {
 int verbose_mount(const char *a, const char *b, const char *c, int d, const char *e) {
     int ret = mount(a,b,c,d,e);
     if (ret == 0) {
-        LOGD("mount: %s%s %s%s%s\n", (a != nullptr && a[0] != '\0')? std::string(std::string(a) + " -> ").data() : "", b, e? "[" : "", e? e : "", e? "]" : "");
+        LOGD("mount: %s%s%s%s\n", b, (a != nullptr && a[0] != '\0')? std::string(std::string(" <- ") + a).data() : "",
+            c? std::string(std::string(" (") + c + ")").data() : "", e? std::string(std::string(" [") + e + "]").data() : "");
     } else {
         PLOGE("mount: %s%s", (a != nullptr && a[0] != '\0')? std::string(std::string(a) + " -> ").data() : "", b);
     }

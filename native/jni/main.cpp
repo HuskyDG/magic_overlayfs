@@ -213,7 +213,6 @@ int main(int argc, const char **argv) {
             // 2 - read-only locked
             
             if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
-                LOGW("fall to read-only overlayfs...\n");
                 opts = "lowerdir=";
                 if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                     opts += masterdir + ":";
@@ -221,7 +220,7 @@ int main(int argc, const char **argv) {
                 opts += ":";
                 opts += info.data();
                 if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
-                    LOGW("mount overlayfs failed, ignore!\n");
+                    LOGW("Unable to add [%s], ignore!\n", info.data());
                     continue;
                 }
             }
@@ -295,7 +294,6 @@ int main(int argc, const char **argv) {
                 // 2 - read-only locked
                 
                 if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
-                    LOGW("fall to read-only overlayfs...\n");
                     opts = "lowerdir=";
                     if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                         opts += masterdir + ":";
