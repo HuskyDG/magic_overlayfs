@@ -16,6 +16,10 @@
 #include <dirent.h>
 #include <sys/vfs.h>
 
+#include "logging.hpp"
+
+int log_fd = -1;
+
 int mkdirs(const char *path, int mode) {
     char s[strlen(path) + 1];
     s[0] = path[0];
@@ -109,25 +113,21 @@ int dump_file(const char *src, const char *dest) {
 
 std::string tmp_dir;
 
-#define FAKE_CODE 0
-
-#if !FAKE_CODE
 #include <sys/mount.h>
 
 int verbose_mount(const char *a, const char *b, const char *c, int d, const char *e) {
-    printf("mount: %s -> %s %s%s%s\n", a, b, e? "[" : "", e? e : "", e? "]" : "");
+    LOGD("mount: %s %s %s%s%s\n", (a != nullptr && a[0] != '\0')? std::string(std::string(a) + " ->").data() : "", b, e? "[" : "", e? e : "", e? "]" : "");
     return mount(a,b,c,d,e);
 }
 
 int verbose_umount(const char *a, int b) {
-    printf("umount: %s\n", a);
+    LOGD("umount: %s\n", a);
     return umount2(a,b);
 }
 
 #define mount(a,b,c,d,e) verbose_mount(a,b,c,d,e)
 #define umount2(a,b) verbose_umount(a,b)
 
-#endif
 
 struct mount_info {
     unsigned int id;
@@ -154,7 +154,7 @@ struct mount_info {
 using namespace std;
 
 #define CLEANUP \
-    printf("clean up\n"); \
+    LOGI("clean up\n"); \
     umount2(tmp_dir.data(), MNT_DETACH); \
     rmdir(tmp_dir.data());
 
@@ -268,21 +268,6 @@ std::string random_strc(int n){
     return result;
 }
 
-#if FAKE_CODE
-
-#define umount2(a,b) nullptr
-
-int fake_return_mount(const char *a, const char *b, const char *c) {
-    printf("%s -> %s (%s)\n", a, b, c? c : "");
-    return 0;
-}
-
-#define mount(a,b,c,d,e) fake_return_mount(a,b,e)
-#define mkdir(a,b) 0
-#define dump_file(a,b) 0
-
-#endif
-
 #define MAKEDIR(s) \
     if (std::find(mountpoint.begin(), mountpoint.end(), "/" s) != mountpoint.end()) { \
         mkdir(std::string(tmp_dir + "/" s).data(), 0755); \
@@ -314,16 +299,6 @@ bool mkdir_ensure(const char *path, int mode) {
 
 
 int main(int argc, const char **argv) {
-#if FAKE_CODE
-    if (getuid() != 0) {
-        execlp("su", "su", "-c", argv[0], 0);
-        _exit(0);
-    }
-    argc = 2;
-    argv[1] = "/mnt/test";
-    const char *mirrors = nullptr;
-#endif
-
     bool overlay = false;
     FILE *fp = fopen("/proc/filesystems", "re");
     if (fp) {
@@ -337,7 +312,6 @@ int main(int argc, const char **argv) {
         }
         fclose(fp);
     }
-#if !FAKE_CODE
     if (!overlay) {
         printf("No overlay supported by kernel!\n");
         return 1;
@@ -375,24 +349,24 @@ int main(int argc, const char **argv) {
     const char *mirrors =
     (argc >= 3 && argv[2][0] == '/' && stat(argv[2], &z) == 0 && S_ISDIR(z.st_mode))?
         argv[2] : nullptr;
-#endif
     std::vector<string> mountpoint;
     std::vector<mount_info> mountinfo;
 
     // list of directories should be mounted!
     std::vector<string> mount_list;
 
-    // trim mountinfo
+    log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
+
     tmp_dir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
-#if !FAKE_CODE
     if (mkdir(tmp_dir.data(), 750) != 0) {
-        printf("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
+        LOGE("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
         return -1;
     }
     mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
     mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
     mount("tmpfs", tmp_dir.data(), "tmpfs", 0, nullptr);
-#endif
+
+    // trim mountinfo
     do {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
@@ -436,6 +410,7 @@ int main(int argc, const char **argv) {
 
     mountpoint.clear();
 
+    LOGI("** Prepare mounts\n");
     // mount overlayfs for subdirectories of /system /vendor /product /system_ext
     std::reverse(mountinfo.begin(), mountinfo.end());
     for (auto &info : mount_list) {
@@ -447,7 +422,6 @@ int main(int argc, const char **argv) {
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
         std::string workerdir = std::string(argv[1]) + "/worker" + info;
         std::string masterdir = std::string(argv[1]) + "/master" + info;
-#if !FAKE_CODE
         char *con;
         {
             char *s = strdup(info.data());
@@ -456,7 +430,7 @@ int main(int argc, const char **argv) {
                 ss[0] = '\0';
                 auto sub = std::string(argv[1]) + "/upper" + s;
                 if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
-                    printf("clone attr [%s] from [%s]\n", con, s);
+                    LOGD("clone attr [%s] from [%s]\n", con, s);
                     chown(sub.data(), getuidof(s), getgidof(s));
                     chmod(sub.data(), getmod(s));
                     setfilecon(sub.data(), con);
@@ -470,7 +444,7 @@ int main(int argc, const char **argv) {
         
         {
             if (mkdir(upperdir.data(), 0755) == 0 && getfilecon(info.data(), &con) >= 0) {
-                printf("clone attr [%s] from [%s]\n", con, info.data());
+                LOGD("clone attr [%s] from [%s]\n", con, info.data());
                 chown(upperdir.data(), getuidof(info.data()), getgidof(info.data()));
                 chmod(upperdir.data(), getmod(info.data()));
                 setfilecon(upperdir.data(), con);
@@ -480,12 +454,11 @@ int main(int argc, const char **argv) {
 
             if (!is_dir(upperdir.data()) ||
                 !is_dir(workerdir.data())) {
-                printf("setup upperdir or workdir failed!\n");
+                LOGD("setup upperdir or workdir failed!\n");
                 CLEANUP
                 return 1;
             }
         }
-#endif
         {
             std::string opts;
             opts += "lowerdir=";
@@ -502,7 +475,7 @@ int main(int argc, const char **argv) {
             // 2 - read-only locked
             
             if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
-                printf("fall to read-only overlayfs...\n");
+                LOGW("fall to read-only overlayfs...\n");
                 opts = "lowerdir=";
                 if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                     opts += masterdir + ":";
@@ -510,7 +483,7 @@ int main(int argc, const char **argv) {
                 opts += ":";
                 opts += info.data();
                 if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
-                    printf("mount overlayfs failed, ignore!\n");
+                    LOGW("mount overlayfs failed, ignore!\n");
                     continue;
                 }
             }
@@ -528,7 +501,7 @@ int main(int argc, const char **argv) {
        	        continue;
             if (mount(info.data(), tmp_mount.data(), nullptr, MS_BIND, nullptr)) {
                 // mount fails
-                printf("mount failed, abort!\n");
+                LOGE("mount failed, abort!\n");
                 CLEANUP
                 return 1;
             }
@@ -537,11 +510,13 @@ int main(int argc, const char **argv) {
         }
     }
 
+    
+    LOGI("** Loading overlayfs\n");
     std::vector<string> mounted;
     for (auto &info : mountpoint) {
         std::string tmp_mount = tmp_dir + info;
         if (mount(tmp_mount.data(), info.data(), nullptr, MS_BIND, nullptr)) {
-            printf("mount failed, abort!\n");
+            LOGE("mount failed, abort!\n");
             // revert all mounts
             std::reverse(mounted.begin(), mounted.end());
             for (auto &dir : mounted) {
@@ -555,6 +530,7 @@ int main(int argc, const char **argv) {
             return 1;
         }
         if (mirrors != nullptr) {
+#undef mount
             std::string mirror_dir = string(mirrors) + info;
             mount(tmp_mount.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
             mount("", mirror_dir.data(), nullptr, MS_PRIVATE, nullptr);
@@ -562,7 +538,7 @@ int main(int argc, const char **argv) {
         }
         mounted.emplace_back(info);
     }
-    printf("mount done!\n");
+    LOGI("mount done!\n");
     CLEANUP
     return 0;
 }
