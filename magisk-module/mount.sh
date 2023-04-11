@@ -89,9 +89,8 @@ rm -rf "$OVERLAYMNT/master"
 mkdir -p "$OVERLAYMNT/master"
 
 if [ ! -z "$OVERLAYLIST" ]; then
-    OVERLAYLIST="${OVERLAYLIST::-1}"
+    export OVERLAYLIST="${OVERLAYLIST::-1}"
     echo "mount overlayfs list: [$OVERLAYLIST]" >>/cache/overlayfs.log
-    mount -t overlay -o lowerdir="$OVERLAYMNT/upper:$OVERLAYLIST" overlay "$OVERLAYMNT/master"
 fi
 
 # overlay_system <writeable-dir> <magisk-mirror>

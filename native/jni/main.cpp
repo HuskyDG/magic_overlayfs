@@ -72,9 +72,6 @@ int main(int argc, const char **argv) {
         return 1;
     }
 
-    const char *OVERLAY_MODE_env = getenv("OVERLAY_MODE");
-    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
-
     struct stat z;
     if (stat(argv[1], &z)) {
         printf("%s does not exist!\n", argv[1]);
@@ -84,6 +81,15 @@ int main(int argc, const char **argv) {
         printf("This is not folder %s\n", argv[1]);
         return 1;
     }
+
+    log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
+    LOGI("* OverlayFS started\n");
+
+    const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
+    const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
+    if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
+    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
+
     const char *mirrors =
     (argc >= 3 && argv[2][0] == '/' && stat(argv[2], &z) == 0 && S_ISDIR(z.st_mode))?
         argv[2] : nullptr;
@@ -93,8 +99,6 @@ int main(int argc, const char **argv) {
     // list of directories should be mounted!
     std::vector<string> mount_list;
 
-    log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
-
     tmp_dir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
     if (mkdir(tmp_dir.data(), 750) != 0) {
         LOGE("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
@@ -102,6 +106,7 @@ int main(int argc, const char **argv) {
     }
     mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
     mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
+    mkdir(std::string(std::string(argv[1]) + "/master").data(), 0750);
     mount("tmpfs", tmp_dir.data(), "tmpfs", 0, nullptr);
 
     // trim mountinfo
@@ -137,7 +142,6 @@ int main(int argc, const char **argv) {
         mountinfo.emplace_back(system);
         mountpoint.emplace_back("/system");
     }
-    
     DIR *dirfp;
     struct dirent *dp;
 
@@ -147,6 +151,19 @@ int main(int argc, const char **argv) {
     MAKEDIR("product")
 
     mountpoint.clear();
+
+    bool merged = false;
+    {
+        std::string upperdir = std::string(argv[1]) + "/upper";
+        std::string masterdir = std::string(argv[1]) + "/master";
+        if (!str_empty(OVERLAYLIST_env)) {
+            std::string opts = "lowerdir=";
+            opts += upperdir + ":" + OVERLAYLIST_env;
+            merged = (mount("overlay", masterdir.data(), "overlay", 0, opts.data()) == 0)? true : false;
+        } else {
+            merged = (mount(upperdir.data(), masterdir.data(), nullptr, MS_BIND, nullptr) == 0)? true : false;
+        }
+    }
 
     LOGI("** Prepare mounts\n");
     // mount overlayfs for subdirectories of /system /vendor /product /system_ext
@@ -214,8 +231,10 @@ int main(int argc, const char **argv) {
             
             if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
                 opts = "lowerdir=";
-                opts += upperdir;
-                opts += ":";
+                if (!merged) {
+                    opts += upperdir;
+                    opts += ":";
+                }
                 if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                     opts += masterdir + ":";
                 opts += info.data();
@@ -295,10 +314,12 @@ int main(int argc, const char **argv) {
                 
                 if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
                     opts = "lowerdir=";
+                    if (!merged) {
+                        opts += upperdir;
+                        opts += ":";
+                     }
                     if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                         opts += masterdir + ":";
-                    opts += upperdir;
-                    opts += ":";
                     opts += info.data();
                     if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
                         LOGW("mount overlayfs failed, fall to bind mount!\n");
