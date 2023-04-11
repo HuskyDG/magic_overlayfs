@@ -2,7 +2,7 @@ MODDIR="${0%/*}"
 
 set -o standalone
 
-MAGISKTMP="$(magisk --path)"
+export MAGISKTMP="$(magisk --path)"
 
 chmod 777 "$MODDIR/overlayfs_system"
 
@@ -93,14 +93,11 @@ if [ ! -z "$OVERLAYLIST" ]; then
     echo "mount overlayfs list: [$OVERLAYLIST]" >>/cache/overlayfs.log
 fi
 
-# overlay_system <writeable-dir> <magisk-mirror>
+# overlay_system <writeable-dir>
 . "$MODDIR/mode.sh"
+"$MODDIR/overlayfs_system" "$OVERLAYMNT" | tee -a /cache/overlayfs.log
 
-if [ -z "$MAGISKTMP" ]; then
-    # KernelSU
-    "$MODDIR/overlayfs_system" "$OVERLAYMNT" | tee -a /cache/overlayfs.log
-else
-    "$MODDIR/overlayfs_system" "$OVERLAYMNT" "$MAGISKTMP/.magisk/mirror" | tee -a /cache/overlayfs.log
+if [ ! -z "$MAGISKTMP" ]; then
     mkdir -p "$MAGISKTMP/overlayfs_mnt"
     mount --bind "$OVERLAYMNT" "$MAGISKTMP/overlayfs_mnt"
 fi

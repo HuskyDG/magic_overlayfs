@@ -83,16 +83,22 @@ int main(int argc, const char **argv) {
     }
 
     log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
-    LOGI("* OverlayFS started\n");
+    LOGI("* Mount OverlayFS started\n");
 
     const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
     const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
+    const char *MAGISKTMP_env = xgetenv("MAGISKTMP");
+
     if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
     int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
 
-    const char *mirrors =
-    (argc >= 3 && argv[2][0] == '/' && stat(argv[2], &z) == 0 && S_ISDIR(z.st_mode))?
-        argv[2] : nullptr;
+    const char *mirrors = nullptr;
+    if (!str_empty(MAGISKTMP_env)) {
+        mirrors = string(string(MAGISKTMP_env) + "/.magisk/mirror").data();
+        if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode))
+            mirrors = nullptr;
+    }
+
     std::vector<string> mountpoint;
     std::vector<mount_info> mountinfo;
 

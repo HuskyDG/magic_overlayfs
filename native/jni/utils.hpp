@@ -13,4 +13,5 @@ int dump_file(const char *src, const char *dest);
 int verbose_mount(const char *a, const char *b, const char *c, int d, const char *e);
 int verbose_umount(const char *a, int b);
 const char *xgetenv(const char *name);
+bool str_empty(const char *str);
 

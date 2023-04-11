@@ -145,6 +145,10 @@ int verbose_umount(const char *a, int b) {
     return umount2(a,b);
 }
 
+bool str_empty(const char *str) {
+    return str == nullptr || str[0] == '\0';
+}
+
 const char *xgetenv(const char *name) {
     const char *val = getenv(name);
     LOGD("getenv: [%s]=[%s]\n", name? name : "", val? val : "");
