@@ -18,7 +18,7 @@ There is two way:
 
 - OverlayFS is mounted as read-only by default
 
-- Configure overlayfs mode in `mode.sh` to change mode of OverlayFS
+- Configure overlayfs mode in `/data/adb/modules(_update)/magisk_overlayfs/mode.sh` to change mode of OverlayFS
 
 > Read-write mode of overlayfs will cause baseband on some devices stop working
 
