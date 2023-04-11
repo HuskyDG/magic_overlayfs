@@ -47,11 +47,12 @@ loop_setup() {
   done
 }
 
-if [ -d "$OVERLAYDIR" ]; then
-    mount --bind "$OVERLAYDIR" "$OVERLAYMNT"
-elif [ -f "$OVERLAYDIR" ]; then
+if [ -f "$OVERLAYDIR" ]; then
     loop_setup /data/adb/overlay
-    [ -z "$LOOPDEV" ] || mount -o rw -t ext4 "$LOOPDEV" "$OVERLAYMNT"
+    if [ ! -z "$LOOPDEV" ]; then
+        mount -o rw -t ext4 "$LOOPDEV" "$OVERLAYMNT"
+        ln "$LOOPDEV" /dev/block/overlayfs_loop
+    fi
 fi
 
 if ! "$MODDIR/overlayfs_system" --test --check-ext4 "$OVERLAYMNT"; then

@@ -37,6 +37,20 @@ if [ ! -f "/data/adb/overlay" ]; then
     fi
 fi
 
-unzip -oj "$ZIPFILE" post-fs-data.sh service.sh util_functions.sh mode.sh mount.sh "libs/$ABI/overlayfs_system" "libs/$ABI/busybox" -d "$MODPATH" 1>&2
+ui_print "- Extract files"
+
+unzip -oj "$ZIPFILE" post-fs-data.sh service.sh util_functions.sh mode.sh mount.sh uninstall.sh "libs/$ABI/overlayfs_system" "libs/$ABI/busybox" -d "$MODPATH"
+
+ui_print "- Setup module"
 
 chmod 777 "$MODPATH/overlayfs_system" "$MODPATH/busybox"
+
+ui_print
+
+ui_print "* OverlayFS is locked as read-only as default"
+ui_print "* Modify mode.sh to change mode of OverlayFS"
+ui_print "* OverlayFS upper loop is /dev/block/overlayfs_loop" 
+ui_print "* On Magisk, OverlayFS upper loop are mounted at"
+ui_print "*  \$(magisk --path)/overlayfs_mnt"
+
+ui_print

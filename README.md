@@ -4,6 +4,8 @@
 - Use `/data` as upperdir for overlayfs to store modifications. All modifications to overlayfs partition will not be made directly, but will be stored in upperdir, so it is easy to revert.
 - Support Magisk version 23.0+ and latest version of KernelSU
 
+> If you are interested in OverlayFS, you can read documentation at <https://docs.kernel.org/filesystems/overlayfs.html>
+
 > If you can't modify system files with MT File Manager, try using [Material Files](https://github.com/zhanghai/MaterialFiles) instead!
 
 ## Build
@@ -14,15 +16,22 @@ There is two way:
 
 ## Change OverlayFS mode
 
-- Configure overlayfs mode in `mode.sh`
+- OverlayFS is mounted as read-only by default
+
+- Configure overlayfs mode in `mode.sh` to change mode of OverlayFS
+
+> Read-write mode of overlayfs will cause baseband on some devices stop working
 
 ```
-# 0 - read-only
+# 0 - read-only but can still remount as read-write
 # 1 - read-write default
-# 2 - read-only locked
+# 2 - read-only locked (cannot remount as read-write)
 
-export OVERLAY_MODE=0
+export OVERLAY_MODE=2
 ```
+
+- OverlayFS upper loop device will be setup at `/dev/block/overlayfs_loop`
+- On Magisk, OverlayFS upper loop are mounted at `$(magisk --path)/overlayfs_mnt`. You can make modifications through this path to make changes to overlayfs mounted in system.
 
 ## Overlayfs-based Magisk module
 
