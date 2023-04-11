@@ -322,33 +322,35 @@ int main(int argc, const char **argv) {
         }
     }
 
-    
+
     LOGI("** Loading overlayfs\n");
     std::vector<string> mounted;
     for (auto &info : mountpoint) {
         std::string tmp_mount = tmp_dir + info;
-        if (mount(tmp_mount.data(), info.data(), nullptr, MS_BIND, nullptr)) {
+        if (mount(tmp_mount.data(), info.data(), nullptr, MS_BIND, nullptr) ||
+#undef mount
+            mount("", info.data(), nullptr, MS_PRIVATE, nullptr) ||
+            mount("", info.data(), nullptr, MS_SHARED, nullptr)) {
             LOGE("mount failed, abort!\n");
             // revert all mounts
             std::reverse(mounted.begin(), mounted.end());
             for (auto &dir : mounted) {
                 umount2(dir.data(), MNT_DETACH);
-                if (mirrors != nullptr) {
-                    std::string mirror_dir = string(mirrors) + dir;
-                    umount2(mirror_dir.data(), MNT_DETACH);
-                }
             }
             CLEANUP
             return 1;
         }
-        if (mirrors != nullptr) {
-#undef mount
+        mounted.emplace_back(info);
+    }
+    // mount to magisk mirrors
+    if (mirrors != nullptr) {
+        for (auto &info : mountpoint) {
+            std::string tmp_mount = tmp_dir + info;
             std::string mirror_dir = string(mirrors) + info;
             mount(tmp_mount.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
             mount("", mirror_dir.data(), nullptr, MS_PRIVATE, nullptr);
             mount("", mirror_dir.data(), nullptr, MS_SHARED, nullptr);
         }
-        mounted.emplace_back(info);
     }
     LOGI("mount done!\n");
     CLEANUP
