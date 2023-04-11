@@ -47,10 +47,12 @@ chmod 777 "$MODPATH/overlayfs_system" "$MODPATH/busybox"
 
 ui_print
 
-ui_print "* OverlayFS is locked as read-only as default"
-ui_print "* Modify mode.sh to change mode of OverlayFS"
-ui_print "* OverlayFS upper loop is /dev/block/overlayfs_loop" 
-ui_print "* On Magisk, OverlayFS upper loop are mounted at"
-ui_print "*  \$(magisk --path)/overlayfs_mnt"
+ui_print " IMPORTANT! PLEASE READ!"
+ui_print "* OverlayFS is mounted read-only by default"
+ui_print "* You can modify mode.sh to change mode of OverlayFS"
+ui_print "* OverlayFS upper loop device will be setup at: "
+ui_print "*   /dev/block/overlayfs_loop" 
+ui_print "* On Magisk, OverlayFS upper loop image will be mounted at:"
+ui_print "*   \$(magisk --path)/overlayfs_mnt"
 
 ui_print

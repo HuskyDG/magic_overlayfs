@@ -2,4 +2,4 @@
 # 1 - read-write default
 # 2 - read-only locked (cannot remount as read-write)
 
-export OVERLAY_MODE=2
+export OVERLAY_MODE=0
