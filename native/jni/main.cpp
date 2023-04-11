@@ -214,10 +214,10 @@ int main(int argc, const char **argv) {
             
             if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
                 opts = "lowerdir=";
-                if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
-                    opts += masterdir + ":";
                 opts += upperdir;
                 opts += ":";
+                if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
+                    opts += masterdir + ":";
                 opts += info.data();
                 if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
                     LOGW("Unable to add [%s], ignore!\n", info.data());
