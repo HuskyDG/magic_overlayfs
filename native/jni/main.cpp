@@ -98,6 +98,9 @@ int main(int argc, const char **argv) {
         if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode))
             mirrors = nullptr;
     }
+    if (mirrors) {
+        LOGD("Magisk mirrors path is %s\n", mirrors);
+    }
 
     std::vector<string> mountpoint;
     std::vector<mount_info> mountinfo;
@@ -254,6 +257,8 @@ int main(int argc, const char **argv) {
     }
 
     // restore stock mounts if possible
+    // if stock mount is directory, merge it with overlayfs
+    // if stock mount is file, then we bind mount it back
     for (auto &mnt : mountinfo) {
         auto info = mnt.target;
         std::string tmp_mount = tmp_dir + info;
@@ -328,6 +333,8 @@ int main(int argc, const char **argv) {
                         opts += masterdir + ":";
                     opts += info.data();
                     if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
+                        // for some reason, overlayfs does not support some filesystems such as vfat, tmpfs, f2fs
+                        // then bind mount it back but we will not be able to modify its content
                         LOGW("mount overlayfs failed, fall to bind mount!\n");
                         goto bind_mount;
                     }
@@ -369,7 +376,7 @@ int main(int argc, const char **argv) {
         }
         mounted.emplace_back(info);
     }
-    // mount to magisk mirrors
+    // inject mount back to to magisk mirrors so Magic mount won't override it
     if (mirrors != nullptr) {
         for (auto &info : mountpoint) {
             std::string tmp_mount = tmp_dir + info;
