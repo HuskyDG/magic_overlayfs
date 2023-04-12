@@ -33,6 +33,11 @@ export OVERLAY_MODE=2
 - OverlayFS upper loop device will be setup at `/dev/block/overlayfs_loop`
 - On Magisk, OverlayFS upper loop are mounted at `$(magisk --path)/overlayfs_mnt`. You can make modifications through this path to make changes to overlayfs mounted in system.
 
+## Modify system files with OverlayFS
+
+<img src="https://user-images.githubusercontent.com/84650617/231326507-7db9b7c8-0dca-40a0-9460-4bdcd06ae3c5.png" width="50%"/><img src="https://user-images.githubusercontent.com/84650617/231326520-99bcd56f-7ab5-4186-920a-bf9f97c729e6.png" width="50%"/>
+
+
 ## Overlayfs-based Magisk module
 
 - If you want to use overlayfs mount for your module, add these line to the end of `customize.sh`
@@ -64,11 +69,27 @@ fi
 
 ## Without Magisk
 
-- Possible to test:
+- Simple configuration to test:
 
 ```bash
-mkdir -p /data/overlayfs
-./overlayfs_system /data/overlayfs
+# - Create a writeable directory in ext4 (f2fs) /data
+# which will be used for upperdir
+# - On some Kernel, f2fs is not supported by OverlayFS
+# and cannot be used directly
+WRITEABLE=/data/overlayfs
+
+mkdir -p "$WRITEABLE"
+
+# - Export list of modules if you want to load mounts by overlayfs
+# - If you have /vendor /product /system_ext as seperate partitons
+# - Please move it out of "system" folder, overwise **BOOM**
+export OVERLAYLIST=/data/adb/modules/module_a:/data/adb/modules/module_b
+
+# - If there is Magisk, export this in post-fs-data.sh (before magic mount):
+export MAGISKTMP="$(magisk --path)"
+
+# - Load overlayfs
+./overlayfs_system "$WRITEABLE"
 ```
 
 ## Source code
