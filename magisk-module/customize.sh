@@ -62,6 +62,7 @@ unzip -oj "$ZIPFILE" overlay.xz \
                      -d "$MODPATH"
 rm -rf /data/adb/overlay.xz
 unzip -oj "$ZIPFILE" overlay.xz -d "/data/adb"
+unzip -oj "$ZIPFILE" util_functions.sh  -d "/data/adb/modules/${MODPATH##*/}"
 
 ui_print "- Setup module"
 
