@@ -52,8 +52,7 @@ if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
     /data/adb/modules/magisk_overlayfs/overlayfs_system --test; then
   ui_print "- Add support for overlayfs"
   . /data/adb/modules/magisk_overlayfs/util_functions.sh
-  support_overlayfs
-  rm -rf "$MODPATH"/system
+  support_overlayfs && rm -rf "$MODPATH"/system
 fi
 ```
 

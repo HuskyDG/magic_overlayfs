@@ -52,47 +52,46 @@ support_overlayfs() {
 #OVERLAY_IMAGE_SHRINK - shrink overlay.img or not?
 
 if [ -d "$MODPATH/system" ]; then
-  OVERLAY_IMAGE_SIZE="$(sizeof "$MODPATH/system" "$OVERLAY_IMAGE_EXTRA")"
-  rm -rf "$MODPATH/overlay.img" "$MODPATH/overlay.img.xz"
-  cp -af /data/adb/overlay.xz "$MODPATH/overlay.img.xz"
-  xz -d "$MODPATH/overlay.img.xz"
-  resize_img "$MODPATH/overlay.img" "${OVERLAY_IMAGE_SIZE}M"
-  ui_print "- Created overlay image with size: $(du -shH "$MODPATH/overlay.img" | awk '{ print $1 }')"
-  loop_setup "$MODPATH/overlay.img"
-  if [ ! -z "$LOOPDEV" ]; then
-    rm -rf "$MODPATH/overlay"
-    mkdir "$MODPATH/overlay"
-    mount -t ext4 -o rw "$LOOPDEV" "$MODPATH/overlay"
-    chcon u:object_r:system_file:s0 "$MODPATH/overlay"
-    cp -afT "$MODPATH/system" "$MODPATH/overlay/system"
-    # fix context
-    ( cd "$MODPATH" || exit 
-      find "system" | while read line; do
-        chcon "$(ls -Zd "$line" | awk '{ print $1 }')" "$MODPATH/overlay/$line"
-        if [ -e "$line/.replace" ]; then
-          setfattr -n trusted.overlay.opaque -v y "$MODPATH/overlay/$line"
-        fi
-      done
-    )
-    
-    # handle partition
-    handle vendor
-    handle product
-    handle system_ext
-    umount -l "$MODPATH/overlay"
+    OVERLAY_IMAGE_SIZE="$(sizeof "$MODPATH/system" "$OVERLAY_IMAGE_EXTRA")"
+    rm -rf "$MODPATH/overlay.img" "$MODPATH/overlay.img.xz"
+    cp -af /data/adb/overlay.xz "$MODPATH/overlay.img.xz"
+    xz -d "$MODPATH/overlay.img.xz"
+    resize_img "$MODPATH/overlay.img" "${OVERLAY_IMAGE_SIZE}M" || { ui_print "! Setup failed"; return 1; }
+    ui_print "- Created overlay image with size: $(du -shH "$MODPATH/overlay.img" | awk '{ print $1 }')"
+    loop_setup "$MODPATH/overlay.img"
+    if [ ! -z "$LOOPDEV" ]; then
+        rm -rf "$MODPATH/overlay"
+        mkdir "$MODPATH/overlay"
+        mount -t ext4 -o rw "$LOOPDEV" "$MODPATH/overlay"
+        chcon u:object_r:system_file:s0 "$MODPATH/overlay"
+        cp -afT "$MODPATH/system" "$MODPATH/overlay/system"
+        # fix context
+        ( cd "$MODPATH" || exit 
+          find "system" | while read line; do
+            chcon "$(ls -Zd "$line" | awk '{ print $1 }')" "$MODPATH/overlay/$line"
+            if [ -e "$line/.replace" ]; then
+              setfattr -n trusted.overlay.opaque -v y "$MODPATH/overlay/$line"
+            fi
+          done
+        )
+        
+        # handle partition
+        handle vendor
+        handle product
+        handle system_ext
+        umount -l "$MODPATH/overlay"
 
-    if [ "$OVERLAY_IMAGE_SHRINK" == "true" ] || [ -z "$OVERLAY_IMAGE_SHRINK" ]; then
-      ui_print "- Shrink overlay image"
-      e2fsck -pf "$MODPATH/overlay.img"
-      resize2fs -M "$MODPATH/overlay.img"
-      ui_print "- Overlay image new size: $(du -shH "$MODPATH/overlay.img" | awk '{ print $1 }')"
-    fi
-    rm -rf "$MODPATH/overlay"
-    if [ "$INCLUDE_MAGIC_MOUNT" == "true" ]; then
-        if [ -f "$MODPATH/post-fs-data.sh" ]; then
-            mv -f "$MODPATH/post-fs-data.sh" "$MODPATH/post-fs-data_orig.sh"
+        if [ "$OVERLAY_IMAGE_SHRINK" == "true" ] || [ -z "$OVERLAY_IMAGE_SHRINK" ]; then
+          ui_print "- Shrink overlay image"
+          resize_img "$MODPATH/overlay.img"
+          ui_print "- Overlay image new size: $(du -shH "$MODPATH/overlay.img" | awk '{ print $1 }')"
         fi
-        cat <<EOF >"$MODPATH/post-fs-data.sh"
+        rm -rf "$MODPATH/overlay"
+        if [ "$INCLUDE_MAGIC_MOUNT" == "true" ]; then
+            if [ -f "$MODPATH/post-fs-data.sh" ]; then
+                mv -f "$MODPATH/post-fs-data.sh" "$MODPATH/post-fs-data_orig.sh"
+            fi
+            cat <<EOF >"$MODPATH/post-fs-data.sh"
 loop_setup() {
   unset LOOPDEV
   local LOOP
@@ -172,7 +171,9 @@ fi
 exit 0
 EOF
         fi
+        return 0
     fi
 fi
 
+return 1
 }
