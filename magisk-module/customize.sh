@@ -3,6 +3,27 @@ if ! $BOOTMODE; then
     abort "! Install from Recovery is not supported"
 fi
 
+
+loop_setup() {
+  unset LOOPDEV
+  local LOOP
+  local MINORX=1
+  [ -e /dev/block/loop1 ] && MINORX=$(stat -Lc '%T' /dev/block/loop1)
+  local NUM=0
+  while [ $NUM -lt 1024 ]; do
+    LOOP=/dev/block/loop$NUM
+    [ -e $LOOP ] || mknod $LOOP b 7 $((NUM * MINORX))
+    if losetup $LOOP "$1" 2>/dev/null; then
+      LOOPDEV=$LOOP
+      break
+    fi
+    NUM=$((NUM + 1))
+  done
+}
+
+randdir="$TMPDIR/.$(head -c21 /dev/urandom | base64)"
+mkdir -p "$randdir"
+
 ABI="$(getprop ro.product.cpu.abi)"
 
 # Fix ABI detection
@@ -25,25 +46,57 @@ if ! $TMPDIR/overlayfs_system --test; then
     abort
 fi
 
-unzip -o "$ZIPFILE" module.prop -d "$MODPATH" 1>&2
-
-if [ ! -f "/data/adb/overlay" ]; then
-    rm -rf "/data/adb/overlay"
-    ui_print "- Create 2GB ext4 loop image..."
-    dd if=/dev/zero of=/data/adb/overlay bs=1024 count=2000000
-    if ! /system/bin/mkfs.ext4 /data/adb/overlay; then
-        rm -rf /data/adb/overlay
-        abort "! Setup ext4 image failed"
-    fi
-fi
 
 ui_print "- Extract files"
 
-unzip -oj "$ZIPFILE" post-fs-data.sh service.sh util_functions.sh mode.sh mount.sh uninstall.sh "libs/$ABI/overlayfs_system" "libs/$ABI/busybox" -d "$MODPATH"
+unzip -oj "$ZIPFILE" overlay.xz \
+                     post-fs-data.sh \
+                     service.sh \
+                     util_functions.sh \
+                     mode.sh \
+                     mount.sh \
+                     uninstall.sh \
+                     module.prop \
+                     "libs/$ABI/overlayfs_system" \
+                     "libs/$ABI/busybox" \
+                     -d "$MODPATH"
+rm -rf /data/adb/overlay.xz
+unzip -oj "$ZIPFILE" overlay.xz -d "/data/adb"
 
 ui_print "- Setup module"
 
 chmod 777 "$MODPATH/overlayfs_system" "$MODPATH/busybox"
+
+resize_img() {
+    e2fsck -pf "$1" || return 1
+    if [ "$2" ]; then
+        resize2fs "$1" "$2" || return 1
+    else
+        resize2fs -M "$1" || return 1
+    fi
+    return 0
+}
+
+test_mount_image() {
+    loop_setup /data/adb/overlay
+    [ -z "$LOOPDEV" ] && return 1
+    result_mnt=1
+    mount -t ext4 -o rw "$LOOPDEV" "$randdir" && \
+    "$MODPATH/overlayfs_system" --test --check-ext4 "$randdir" && result_mnt=0
+    umount -l "$randdir"
+    return $result_mnt
+}
+    
+
+if [ ! -f "/data/adb/overlay" ] || ! test_mount_image; then
+    rm -rf "/data/adb/overlay"
+    ui_print "- Setup 2GB ext4 image at /data/adb/overlay"
+    ui_print "  Please wait..."
+    if ! xz -kd "/data/adb/overlay.xz" || ! resize_img "/data/adb/overlay" 2000M || ! test_mount_image; then
+        rm -rf /data/adb/overlay.xz
+        abort "! Setup ext4 image failed, abort"
+    fi
+fi
 
 ui_print
 

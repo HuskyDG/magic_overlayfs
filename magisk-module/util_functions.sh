@@ -1,11 +1,22 @@
 
+
+resize_img() {
+    e2fsck -pf "$1" || return 1
+    if [ "$2" ]; then
+        resize2fs "$1" "$2" || return 1
+    else
+        resize2fs -M "$1" || return 1
+    fi
+    return 0
+}
+
 loop_setup() {
   unset LOOPDEV
   local LOOP
   local MINORX=1
   [ -e /dev/block/loop1 ] && MINORX=$(stat -Lc '%T' /dev/block/loop1)
   local NUM=0
-  while [ $NUM -lt 1024 ]; do
+  while [ $NUM -lt 2048 ]; do
     LOOP=/dev/block/loop$NUM
     [ -e $LOOP ] || mknod $LOOP b 7 $((NUM * MINORX))
     if losetup $LOOP "$1" 2>/dev/null; then
@@ -42,9 +53,11 @@ support_overlayfs() {
 
 if [ -d "$MODPATH/system" ]; then
   OVERLAY_IMAGE_SIZE="$(sizeof "$MODPATH/system" "$OVERLAY_IMAGE_EXTRA")"
-  dd if=/dev/zero of="$MODPATH/overlay.img" bs=1024 count="$OVERLAY_IMAGE_SIZE"
+  rm -rf "$MODPATH/overlay.img" "$MODPATH/overlay.img.xz"
+  cp -af /data/adb/overlay.xz "$MODPATH/overlay.img.xz"
+  xz -d "$MODPATH/overlay.img.xz"
+  resize_img "$MODPATH/overlay.img" "${OVERLAY_IMAGE_SIZE}M"
   ui_print "- Created overlay image with size: $(du -shH "$MODPATH/overlay.img" | awk '{ print $1 }')"
-  /system/bin/mkfs.ext4 "$MODPATH/overlay.img"
   loop_setup "$MODPATH/overlay.img"
   if [ ! -z "$LOOPDEV" ]; then
     rm -rf "$MODPATH/overlay"
