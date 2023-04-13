@@ -266,13 +266,13 @@ int main(int argc, const char **argv) {
         struct stat st;
         for (auto &s : mount_list) {
             // only care about mountpoint under overlayfs mounted subdirectories
-            if (!starts_with(info.data(), string(s + "/").data()))
+            if (stat(info.data(), &st) != 0 || !starts_with(info.data(), string(s + "/").data()))
                continue;
             char *con;
             std::string upperdir = std::string(argv[1]) + "/upper" + info;
             std::string workerdir = std::string(argv[1]) + "/worker" + info;
             std::string masterdir = std::string(argv[1]) + "/master" + info;
-            if (stat(info.data(), &st) == 0 && !S_ISDIR(st.st_mode))
+            if (!S_ISDIR(st.st_mode))
                 goto bind_mount;
             {
                 char *s = strdup(info.data());
@@ -379,9 +379,11 @@ int main(int argc, const char **argv) {
         LOGI("** Loading overlayfs mirrors\n");
         for (auto &info : mountpoint) {
             std::string mirror_dir = string(mirrors) + info;
-            xmount(info.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
-            mount("", mirror_dir.data(), nullptr, MS_PRIVATE, nullptr);
-            mount("", mirror_dir.data(), nullptr, MS_SHARED, nullptr);
+            if (access(mirror_dir.data(), F_OK) == 0) {
+                xmount(info.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
+                mount("", mirror_dir.data(), nullptr, MS_PRIVATE, nullptr);
+                mount("", mirror_dir.data(), nullptr, MS_SHARED, nullptr);
+            }
         }
     }
     LOGI("mount done!\n");
