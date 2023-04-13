@@ -103,6 +103,8 @@ if [ ! -z "$MAGISKTMP" ]; then
 fi
 
 rm -rf /dev/.overlayfs_service_unblock
+echo "--- Mountinfo (post-fs-data) ---" >>/cache/overlayfs.log
+cat /proc/mounts >>/cache/overlayfs.log
 (
     # block until /dev/.overlayfs_service_unblock
     while [ ! -e "/dev/.overlayfs_service_unblock" ]; do
@@ -117,7 +119,7 @@ rm -rf /dev/.overlayfs_service_unblock
     umount -l "$OVERLAYMNT"
     rmdir "$OVERLAYMNT"
 
-    echo "--- Mountinfo ---" >>/cache/overlayfs.log
+    echo "--- Mountinfo (late_start) ---" >>/cache/overlayfs.log
     cat /proc/mounts >>/cache/overlayfs.log
 ) &
 
