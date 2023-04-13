@@ -5,7 +5,7 @@
 
 using namespace std;
 
-#define mount(a,b,c,d,e) verbose_mount(a,b,c,d,e)
+#define xmount(a,b,c,d,e) verbose_mount(a,b,c,d,e)
 #define umount2(a,b) verbose_umount(a,b)
 
 #define UNDER(s) (starts_with(info.target.data(), s "/") || info.target == s)
@@ -94,9 +94,12 @@ int main(int argc, const char **argv) {
 
     const char *mirrors = nullptr;
     if (!str_empty(MAGISKTMP_env)) {
-        mirrors = string(string(MAGISKTMP_env) + "/.magisk/mirror").data();
-        if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode))
+        // use strdup as std::string, memory is automatically managed by the class and released when the string object goes out of scope
+        mirrors = strdup(string(string(MAGISKTMP_env) + "/.magisk/mirror").data());
+        if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode)) {
+            free((void*)mirrors);	
             mirrors = nullptr;
+        }
     }
     if (mirrors) {
         LOGD("Magisk mirrors path is %s\n", mirrors);
@@ -116,7 +119,7 @@ int main(int argc, const char **argv) {
     mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
     mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
     mkdir(std::string(std::string(argv[1]) + "/master").data(), 0750);
-    mount("tmpfs", tmp_dir.data(), "tmpfs", 0, nullptr);
+    xmount("tmpfs", tmp_dir.data(), "tmpfs", 0, nullptr);
 
     // trim mountinfo
     do {
@@ -161,16 +164,16 @@ int main(int argc, const char **argv) {
 
     mountpoint.clear();
 
-    bool merged = false;
     {
-        std::string upperdir = std::string(argv[1]) + "/upper";
         std::string masterdir = std::string(argv[1]) + "/master";
         if (!str_empty(OVERLAYLIST_env)) {
-            std::string opts = "lowerdir=";
-            opts += upperdir + ":" + OVERLAYLIST_env;
-            merged = (mount("overlay", masterdir.data(), "overlay", 0, opts.data()) == 0)? true : false;
-        } else {
-            merged = (mount(upperdir.data(), masterdir.data(), nullptr, MS_BIND, nullptr) == 0)? true : false;
+            if (strchr(OVERLAYLIST_env, ':') != nullptr) {
+                std::string opts = "lowerdir=";
+                opts += OVERLAYLIST_env;
+                xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
+            } else {
+                xmount(OVERLAYLIST_env, masterdir.data(), nullptr, 0, nullptr);
+            }
         }
     }
 
@@ -238,16 +241,14 @@ int main(int argc, const char **argv) {
             // 1 - read-write default
             // 2 - read-only locked
             
-            if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
+            if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
                 opts = "lowerdir=";
-                if (!merged) {
-                    opts += upperdir;
-                    opts += ":";
-                }
+                opts += upperdir;
+                opts += ":";
                 if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                     opts += masterdir + ":";
                 opts += info.data();
-                if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
+                if (xmount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
                     LOGW("Unable to add [%s], ignore!\n", info.data());
                     continue;
                 }
@@ -323,16 +324,14 @@ int main(int argc, const char **argv) {
                 // 1 - read-write default
                 // 2 - read-only locked
                 
-                if (OVERLAY_MODE == 2 || mount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
+                if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", ((OVERLAY_MODE == 1)? 0 : MS_RDONLY), opts.data())) {
                     opts = "lowerdir=";
-                    if (!merged) {
-                        opts += upperdir;
-                        opts += ":";
-                     }
+                    opts += upperdir;
+                    opts += ":";
                     if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
                         opts += masterdir + ":";
                     opts += info.data();
-                    if (mount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
+                    if (xmount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
                         // for some reason, overlayfs does not support some filesystems such as vfat, tmpfs, f2fs
                         // then bind mount it back but we will not be able to modify its content
                         LOGW("mount overlayfs failed, fall to bind mount!\n");
@@ -343,7 +342,7 @@ int main(int argc, const char **argv) {
             goto mount_done;
                
             bind_mount:
-            if (mount(info.data(), tmp_mount.data(), nullptr, MS_BIND, nullptr)) {
+            if (xmount(info.data(), tmp_mount.data(), nullptr, MS_BIND, nullptr)) {
                 // mount fails
                 LOGE("mount failed, abort!\n");
                 CLEANUP
@@ -361,8 +360,7 @@ int main(int argc, const char **argv) {
     std::vector<string> mounted;
     for (auto &info : mountpoint) {
         std::string tmp_mount = tmp_dir + info;
-        if (mount(tmp_mount.data(), info.data(), nullptr, MS_BIND, nullptr) ||
-#undef mount
+        if (xmount(tmp_mount.data(), info.data(), nullptr, MS_BIND, nullptr) ||
             mount("", info.data(), nullptr, MS_PRIVATE, nullptr) ||
             mount("", info.data(), nullptr, MS_SHARED, nullptr)) {
             LOGE("mount failed, abort!\n");
@@ -378,10 +376,10 @@ int main(int argc, const char **argv) {
     }
     // inject mount back to to magisk mirrors so Magic mount won't override it
     if (mirrors != nullptr) {
+        LOGI("** Loading overlayfs mirrors\n");
         for (auto &info : mountpoint) {
-            std::string tmp_mount = tmp_dir + info;
             std::string mirror_dir = string(mirrors) + info;
-            mount(tmp_mount.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
+            xmount(info.data(), mirror_dir.data(), nullptr, MS_BIND, nullptr);
             mount("", mirror_dir.data(), nullptr, MS_PRIVATE, nullptr);
             mount("", mirror_dir.data(), nullptr, MS_SHARED, nullptr);
         }
