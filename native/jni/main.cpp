@@ -39,17 +39,13 @@ std::vector<string> mountpoint;
 std::vector<mount_info> mountinfo;
 
 static void collect_mounts() {
-    // trim mountinfo
+    // sort mountinfo, skip unnecessary mounts
     mountpoint.clear();
     mountinfo.clear();
     do {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
         for (auto &info : current_mount_info) {
-            struct stat st;
-            // skip mount under another mounr
-            if (stat(info.target.data(), &st) || info.device != st.st_dev)
-                continue;
             if (UNDER("/system") ||
                  UNDER("/vendor") ||
                  UNDER("/system_ext") ||
@@ -73,9 +69,12 @@ static void collect_mounts() {
                  UNDER("/my_company") ||
                  UNDER("/my_bigball")) {
                 for (auto &s : mountpoint) {
-                    if (s == info.target)
+                    //   /a/b/c <--- under a (skip)
+                    //   /a
+                    //   /a/b
+                    if (s == info.target || starts_with(string(info.target + "/").data(), s.data()))
                         goto next_mountpoint;
-                 }
+                }
                 //printf("new mount: %s\n", info.target.data());
                 mountpoint.emplace_back(info.target);
                 mountinfo.emplace_back(info);
