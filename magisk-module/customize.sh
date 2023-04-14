@@ -84,6 +84,10 @@ test_mount_image() {
     result_mnt=1
     mount -t ext4 -o rw "$LOOPDEV" "$randdir" && \
     "$MODPATH/overlayfs_system" --test --check-ext4 "$randdir" && result_mnt=0
+    # ensure that uppderdir does not override my binary
+    rm -rf "$randdir/upper/system/etc/overlayfs_system" \
+           "$randdir/upper/system/etc/magic_remount_rw" \
+           "$randdir/upper/system/etc/magic_remount_ro"
     umount -l "$randdir"
     return $result_mnt
 }
