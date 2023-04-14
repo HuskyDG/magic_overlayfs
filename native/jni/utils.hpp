@@ -3,6 +3,8 @@
 std::string random_strc(int n);
 bool starts_with(const char *s, const char *ss);
 bool is_dir(const char *path);
+bool is_lnk(const char *path);
+bool fexist(const char *path);
 bool mkdir_ensure(const char *path, int mode);
 int mkdirs(const char *path, int mode);
 char *dirname2(const char *path);

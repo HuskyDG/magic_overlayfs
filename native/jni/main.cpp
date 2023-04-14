@@ -288,9 +288,10 @@ int main(int argc, const char **argv) {
             }
         }
         {
+            bool module_node_is_dir = is_dir(masterdir.data());
             std::string opts;
             opts += "lowerdir=";
-            if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
+            if (module_node_is_dir)
                 opts += masterdir + ":";
             opts += info.data();
             opts += ",upperdir=";
@@ -306,7 +307,7 @@ int main(int argc, const char **argv) {
                 opts = "lowerdir=";
                 opts += upperdir;
                 opts += ":";
-                if (stat(masterdir.data(), &st) == 0 && S_ISDIR(st.st_mode))
+                if (module_node_is_dir)
                     opts += masterdir + ":";
                 opts += info.data();
                 if (xmount("overlay", tmp_mount.data(), "overlay", 0, opts.data())) {
@@ -324,18 +325,23 @@ int main(int argc, const char **argv) {
     for (auto &mnt : mountinfo) {
         auto info = mnt.target;
         std::string tmp_mount = tmp_dir + info;
+        std::string upperdir = std::string(argv[1]) + "/upper" + info;
+        std::string workerdir = std::string(argv[1]) + "/worker" + info;
+        std::string masterdir = std::string(argv[1]) + "/master" + info;
+        bool module_node_is_dir = is_dir(masterdir.data());
+        bool module_node_exist = fexist(masterdir.data());
+        bool upper_node_is_dir = is_dir(upperdir.data());
+        bool upper_node_exist = fexist(upperdir.data());
         struct stat st;
-        // target does not exist, it could be deleted by modules
-        if (stat(info.data(), &st) != 0)
+        if (lstat(info.data(), &st) != 0 || // target does not exist, it could be deleted by modules
+            (((upper_node_exist && !upper_node_is_dir) ||
+              (!upper_node_exist && module_node_exist && !module_node_is_dir)) && S_ISDIR(st.st_mode))) // module add file but original is folder
             continue;
         for (auto &s : mount_list) {
             // only care about mountpoint under overlayfs mounted subdirectories
             if (!starts_with(info.data(), string(s + "/").data()))
                continue;
             char *con;
-            std::string upperdir = std::string(argv[1]) + "/upper" + info;
-            std::string workerdir = std::string(argv[1]) + "/worker" + info;
-            std::string masterdir = std::string(argv[1]) + "/master" + info;
             if (!S_ISDIR(st.st_mode)) {
                 // skip bind mount if there is modification for this file
                 if (access(masterdir.data(), F_OK) == 0 ||

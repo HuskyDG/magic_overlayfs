@@ -25,11 +25,22 @@ bool starts_with(const char *s, const char *ss) {
     return str != nullptr && str == s;
 }
 
+bool fexist(const char *path) {
+    struct stat st;
+    return lstat(path, &st) == 0;
+}
+	
 
 bool is_dir(const char *path) {
     struct stat st;
-    return stat(path, &st) == 0 &&
+    return lstat(path, &st) == 0 &&
            S_ISDIR(st.st_mode);
+}
+
+bool is_lnk(const char *path) {
+    struct stat st;
+    return lstat(path, &st) == 0 &&
+           S_ISLNK(st.st_mode);
 }
 
 bool mkdir_ensure(const char *path, int mode) {
