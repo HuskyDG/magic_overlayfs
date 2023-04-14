@@ -15,5 +15,6 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/statvfs.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
