@@ -172,7 +172,7 @@ int main(int argc, const char **argv) {
                 opts += OVERLAYLIST_env;
                 xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
             } else {
-                xmount(OVERLAYLIST_env, masterdir.data(), nullptr, 0, nullptr);
+                xmount(OVERLAYLIST_env, masterdir.data(), nullptr, MS_BIND, nullptr);
             }
         }
     }
