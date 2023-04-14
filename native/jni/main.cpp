@@ -97,7 +97,7 @@ int main(int argc, const char **argv) {
         // use strdup as std::string, memory is automatically managed by the class and released when the string object goes out of scope
         mirrors = strdup(string(string(MAGISKTMP_env) + "/.magisk/mirror").data());
         if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode)) {
-            free((void*)mirrors);	
+            free((void*)mirrors);    
             mirrors = nullptr;
         }
     }
@@ -133,7 +133,25 @@ int main(int argc, const char **argv) {
             if (UNDER("/system") ||
                  UNDER("/vendor") ||
                  UNDER("/system_ext") ||
-                 UNDER("/product")) {
+                 UNDER("/product") ||
+                 UNDER("/odm") ||
+                 UNDER("/oem") ||
+                 UNDER("/vendor_dlkm") ||
+                 UNDER("/odm_dlkm") ||
+                 UNDER("/my_custom") ||
+                 UNDER("/my_engineering") ||
+                 UNDER("/my_heytap") ||
+                 UNDER("/my_manifest") ||
+                 UNDER("/my_preload") ||
+                 UNDER("/my_product") ||
+                 UNDER("/my_region") ||
+                 UNDER("/my_stock") ||
+                 UNDER("/my_version") ||
+                 UNDER("/my_company") ||
+                 UNDER("/my_carrier") ||
+                 UNDER("/my_region") ||
+                 UNDER("/my_company") ||
+                 UNDER("/my_bigball")) {
                 for (auto &s : mountpoint) {
                     if (s == info.target)
                         goto next_mountpoint;
@@ -161,6 +179,24 @@ int main(int argc, const char **argv) {
     MAKEDIR("vendor")
     MAKEDIR("system_ext")
     MAKEDIR("product")
+    MAKEDIR("odm")
+    MAKEDIR("oem")
+    MAKEDIR("vendor_dlkm")
+    MAKEDIR("odm_dlkm")
+    MAKEDIR("my_custom")
+    MAKEDIR("my_engineering")
+    MAKEDIR("my_heytap")
+    MAKEDIR("my_manifest")
+    MAKEDIR("my_preload")
+    MAKEDIR("my_product")
+    MAKEDIR("my_region")
+    MAKEDIR("my_stock")
+    MAKEDIR("my_version")
+    MAKEDIR("my_company")
+    MAKEDIR("my_carrier")
+    MAKEDIR("my_region")
+    MAKEDIR("my_company")
+    MAKEDIR("my_bigball")
 
     mountpoint.clear();
 
