@@ -86,16 +86,26 @@ static void collect_mounts() {
     } while(false);
 }
 
-static void do_remount(int flags = 0, int exclude_flags = 0) {
+static int do_remount(int flags = 0, int exclude_flags = 0) {
     collect_mounts();
     struct statvfs stvfs{};
     for (auto &info : mountpoint) {
         statvfs(info.data(), &stvfs);
         xmount(nullptr, info.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & ~exclude_flags) | flags, nullptr);
     }
+    return 0;
 }
 
 int main(int argc, const char **argv) {
+    char *argv0 = strdup(argv[0]);
+    const char *bname = basename(argv0);
+
+    if ((strcmp(bname, "magic_remount_rw") == 0) || ((argc > 1) && (strcmp(argv[1], "--remount-rw") == 0))) {
+        return do_remount(0, MS_RDONLY);
+    } else if ((strcmp(bname, "magic_remount_ro") == 0) || ((argc > 1) && (strcmp(argv[1], "--remount-ro") == 0))) {
+        return do_remount(MS_RDONLY);
+    }
+
     bool overlay = false;
     FILE *fp = fopen("/proc/filesystems", "re");
     if (fp) {
@@ -125,14 +135,6 @@ int main(int argc, const char **argv) {
             return (statfs(argv[2], &stfs) == 0 && stfs.f_type == EXT4_SUPER_MAGIC)?
                 0 : 1;
         }
-        return 0;
-    }
-    if (strcmp(argv[1], "--remount-rw") == 0) {
-        do_remount(0, MS_RDONLY);
-        return 0;
-    }
-    if (strcmp(argv[1], "--remount-ro") == 0) {
-        do_remount(MS_RDONLY, 0);
         return 0;
     }
     if (argv[1][0] != '/') {
