@@ -300,16 +300,24 @@ int main(int argc, const char **argv) {
         auto info = mnt.target;
         std::string tmp_mount = tmp_dir + info;
         struct stat st;
+        // target does not exist, it could be deleted by modules
+        if (stat(info.data(), &st) != 0)
+            continue;
         for (auto &s : mount_list) {
             // only care about mountpoint under overlayfs mounted subdirectories
-            if (stat(info.data(), &st) != 0 || !starts_with(info.data(), string(s + "/").data()))
+            if (!starts_with(info.data(), string(s + "/").data()))
                continue;
             char *con;
             std::string upperdir = std::string(argv[1]) + "/upper" + info;
             std::string workerdir = std::string(argv[1]) + "/worker" + info;
             std::string masterdir = std::string(argv[1]) + "/master" + info;
-            if (!S_ISDIR(st.st_mode))
+            if (!S_ISDIR(st.st_mode)) {
+                // skip bind mount if there is modification for this file
+                if (access(masterdir.data(), F_OK) == 0 ||
+                    access(upperdir.data(), F_OK) == 0)
+                    continue;
                 goto bind_mount;
+            }
             {
                 char *s = strdup(info.data());
                 char *ss = s;
