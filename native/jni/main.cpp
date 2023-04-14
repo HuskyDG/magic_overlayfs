@@ -35,93 +35,13 @@ using namespace std;
 
 int log_fd = -1;
 std::string tmp_dir;
+std::vector<string> mountpoint;
+std::vector<mount_info> mountinfo;
 
-int main(int argc, const char **argv) {
-    bool overlay = false;
-    FILE *fp = fopen("/proc/filesystems", "re");
-    if (fp) {
-        char buf[1024];
-        while (fgets(buf, sizeof(buf), fp)) {
-            buf[strlen(buf)-1] = '\0';
-            if (strcmp(buf + 6, "overlay") == 0) {
-                overlay = true;
-                break;
-            }
-        }
-        fclose(fp);
-    }
-    if (!overlay) {
-        printf("No overlay supported by kernel!\n");
-        return 1;
-    }
-    if (argc<2) {
-        printf("You forgot to tell me the write-able folder :v\n");
-        return 1;
-    }
-    if (strcmp(argv[1], "--test") == 0) {
-        argc--;
-        argv++;
-        if (argc >= 3 && strcmp(argv[1], "--check-ext4") == 0) {
-            struct statfs stfs{};
-            return (statfs(argv[2], &stfs) == 0 && stfs.f_type == EXT4_SUPER_MAGIC)?
-                0 : 1;
-        }
-        return 0;
-    } else if (argv[1][0] != '/') {
-        printf("Please tell me the full path of folder >:)\n");
-        return 1;
-    }
-
-    struct stat z;
-    if (stat(argv[1], &z)) {
-        printf("%s does not exist!\n", argv[1]);
-        return 1;
-    }
-    if (!S_ISDIR(z.st_mode)) {
-        printf("This is not folder %s\n", argv[1]);
-        return 1;
-    }
-
-    log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
-    LOGI("* Mount OverlayFS started\n");
-
-    const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
-    const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
-    const char *MAGISKTMP_env = xgetenv("MAGISKTMP");
-
-    if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
-    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
-
-    const char *mirrors = nullptr;
-    if (!str_empty(MAGISKTMP_env)) {
-        // use strdup as std::string, memory is automatically managed by the class and released when the string object goes out of scope
-        mirrors = strdup(string(string(MAGISKTMP_env) + "/.magisk/mirror").data());
-        if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode)) {
-            free((void*)mirrors);    
-            mirrors = nullptr;
-        }
-    }
-    if (mirrors) {
-        LOGD("Magisk mirrors path is %s\n", mirrors);
-    }
-
-    std::vector<string> mountpoint;
-    std::vector<mount_info> mountinfo;
-
-    // list of directories should be mounted!
-    std::vector<string> mount_list;
-
-    tmp_dir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
-    if (mkdir(tmp_dir.data(), 750) != 0) {
-        LOGE("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
-        return -1;
-    }
-    mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
-    mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
-    mkdir(std::string(std::string(argv[1]) + "/master").data(), 0750);
-    xmount("tmpfs", tmp_dir.data(), "tmpfs", 0, nullptr);
-
+static void collect_mounts() {
     // trim mountinfo
+    mountpoint.clear();
+    mountinfo.clear();
     do {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
@@ -164,6 +84,111 @@ int main(int argc, const char **argv) {
             continue;
         }
     } while(false);
+}
+
+static int do_remount(int flags = 0, int exclude_flags = 0) {
+    collect_mounts();
+    struct statvfs stvfs{};
+    exclude_flags |= MS_BIND;
+    for (auto &info : mountpoint) {
+        statvfs(info.data(), &stvfs);
+        xmount(nullptr, info.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & ~exclude_flags) | flags, nullptr);
+    }
+    return 0;
+}
+
+int main(int argc, const char **argv) {
+    char *argv0 = strdup(argv[0]);
+    const char *bname = basename(argv0);
+
+    if ((strcmp(bname, "magic_remount_rw") == 0) || ((argc > 1) && (strcmp(argv[1], "--remount-rw") == 0))) {
+        return do_remount(0, MS_RDONLY);
+    } else if ((strcmp(bname, "magic_remount_ro") == 0) || ((argc > 1) && (strcmp(argv[1], "--remount-ro") == 0))) {
+        return do_remount(MS_RDONLY);
+    }
+
+    bool overlay = false;
+    FILE *fp = fopen("/proc/filesystems", "re");
+    if (fp) {
+        char buf[1024];
+        while (fgets(buf, sizeof(buf), fp)) {
+            buf[strlen(buf)-1] = '\0';
+            if (strcmp(buf + 6, "overlay") == 0) {
+                overlay = true;
+                break;
+            }
+        }
+        fclose(fp);
+    }
+    if (!overlay) {
+        printf("No overlay supported by kernel!\n");
+        return 1;
+    }
+    if (argc<2) {
+        printf("You forgot to tell me the write-able folder :v\n");
+        return 1;
+    }
+    if (strcmp(argv[1], "--test") == 0) {
+        argc--;
+        argv++;
+        if (argc >= 3 && strcmp(argv[1], "--check-ext4") == 0) {
+            struct statfs stfs{};
+            return (statfs(argv[2], &stfs) == 0 && stfs.f_type == EXT4_SUPER_MAGIC)?
+                0 : 1;
+        }
+        return 0;
+    }
+    if (argv[1][0] != '/') {
+        printf("Please tell me the full path of folder >:)\n");
+        return 1;
+    }
+
+    struct stat z;
+    if (stat(argv[1], &z)) {
+        printf("%s does not exist!\n", argv[1]);
+        return 1;
+    }
+    if (!S_ISDIR(z.st_mode)) {
+        printf("This is not folder %s\n", argv[1]);
+        return 1;
+    }
+
+    log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
+    LOGI("* Mount OverlayFS started\n");
+    collect_mounts();
+
+    const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
+    const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
+    const char *MAGISKTMP_env = xgetenv("MAGISKTMP");
+
+    if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
+    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
+
+    const char *mirrors = nullptr;
+    if (!str_empty(MAGISKTMP_env)) {
+        // use strdup as std::string, memory is automatically managed by the class and released when the string object goes out of scope
+        mirrors = strdup(string(string(MAGISKTMP_env) + "/.magisk/mirror").data());
+        if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode)) {
+            free((void*)mirrors);    
+            mirrors = nullptr;
+        }
+    }
+    if (mirrors) {
+        LOGD("Magisk mirrors path is %s\n", mirrors);
+    }
+
+    // list of directories should be mounted!
+    std::vector<string> mount_list;
+
+    tmp_dir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
+    if (mkdir(tmp_dir.data(), 750) != 0) {
+        LOGE("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
+        return -1;
+    }
+    mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
+    mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
+    mkdir(std::string(std::string(argv[1]) + "/master").data(), 0750);
+    xmount("tmpfs", tmp_dir.data(), "tmpfs", 0, nullptr);
 
     struct mount_info system;
     system.target = "/system";

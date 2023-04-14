@@ -99,6 +99,14 @@ if [ ! -f "/data/adb/overlay" ] || ! test_mount_image; then
     fi
 fi
 
+mkdir -p "$MODPATH/system/bin"
+cp -af "$MODPATH/overlayfs_system" "$MODPATH/system/bin"
+ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_rw"
+ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_ro"
+
+. "$MODPATH/util_functions.sh"
+support_overlayfs && rm -rf "$MODPATH/system"
+
 ui_print
 
 ui_print " IMPORTANT! PLEASE READ!"
