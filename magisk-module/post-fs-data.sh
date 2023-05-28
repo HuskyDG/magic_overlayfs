@@ -90,6 +90,7 @@ for i in "$MODULEMNT"/*; do
 done
 
 mkdir -p "$OVERLAYMNT/upper"
+rm -rf "$OVERLAYMNT/worker"
 mkdir -p "$OVERLAYMNT/worker"
 
 if [ ! -z "$OVERLAYLIST" ]; then
