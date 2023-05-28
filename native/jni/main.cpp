@@ -52,8 +52,12 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
         auto info = mnt.target;
         statvfs(info.data(), &stvfs);
         if (mnt.type == "overlay" || mnt.type == "tmpfs") {
-            LOGD("%s [%s] (%s)\n", (mount(nullptr, info.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & ~exclude_flags) | flags, nullptr) == 0)?
+            int fd = open(info.data(), O_PATH);
+            string fd_path = "/proc/self/fd/";
+            fd_path += std::to_string(fd);
+            LOGD("%s [%s] (%s)\n", (mount(nullptr, fd_path.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & ~exclude_flags) | flags, nullptr) == 0)?
                  "remounted" : "remount failed", info.data(), mnt.type.data());
+            close(fd);
         } else {
             LOGD("%s [%s] (%s)\n", "skipped", info.data(), mnt.type.data());
         }
