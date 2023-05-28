@@ -208,7 +208,7 @@ int main(int argc, const char **argv) {
         std::string tmp_mount = overlay_tmpdir + info;
 
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + ":" + std::to_string(st.st_ino);
+        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
         std::string masterdir = overlay_tmpdir + "/master" + info;
         char *con;
         {
@@ -285,7 +285,7 @@ int main(int argc, const char **argv) {
             continue;
         std::string tmp_mount = overlay_tmpdir + info;
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + ":" + std::to_string(st.st_ino);
+        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
         std::string masterdir = overlay_tmpdir + "/master" + info;
         bool module_node_is_dir = is_dir(masterdir.data());
         bool module_node_exist = fexist(masterdir.data());
