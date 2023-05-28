@@ -187,14 +187,14 @@ int main(int argc, const char **argv) {
     }
 
     if (!str_empty(OVERLAYLIST_env)) {
-		std::string masterdir = overlay_tmpdir + "/master";
-		if (strchr(OVERLAYLIST_env, ':') != nullptr) {
-			std::string opts = "lowerdir=";
-			opts += OVERLAYLIST_env;
-			xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
-		} else {
-			xmount(OVERLAYLIST_env, masterdir.data(), nullptr, MS_BIND, nullptr);
-		}
+        std::string masterdir = overlay_tmpdir + "/master";
+        if (strchr(OVERLAYLIST_env, ':') != nullptr) {
+            std::string opts = "lowerdir=";
+            opts += OVERLAYLIST_env;
+            xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
+        } else {
+            xmount(OVERLAYLIST_env, masterdir.data(), nullptr, MS_BIND, nullptr);
+        }
     }
     auto module_list = split_ro(OVERLAYLIST_env, ':');
 
@@ -218,10 +218,12 @@ int main(int argc, const char **argv) {
                 ss[0] = '\0';
                 auto sub = std::string(argv[1]) + "/upper" + s;
                 if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
-                    LOGD("clone attr [%s] from [%s]\n", con, s);
-                    chown(sub.data(), getuidof(s), getgidof(s));
-                    chmod(sub.data(), getmod(s));
-                    setfilecon(sub.data(), con);
+                    int f_uid = getuidof(s), f_gid = getgidof(s), f_mode = getmod(s);
+                    LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
+                        con, f_uid, f_gid, f_mode, s);
+                    if (chown(sub.data(), f_uid, f_gid) == -1) LOGE("chown failed [%s]\n", sub.data());
+                    if (chmod(sub.data(), f_mode) == -1) LOGE("chmod failed [%s]\n", sub.data());
+                    if (setfilecon(sub.data(), con) == -1) LOGE("setfilecon failed [%s]\n", sub.data());
                     freecon(con);
                 }
                 ss[0] = '/';
@@ -232,10 +234,12 @@ int main(int argc, const char **argv) {
         
         {
             if (mkdir(upperdir.data(), 0755) == 0 && getfilecon(info.data(), &con) >= 0) {
-                LOGD("clone attr [%s] from [%s]\n", con, info.data());
-                chown(upperdir.data(), getuidof(info.data()), getgidof(info.data()));
-                chmod(upperdir.data(), getmod(info.data()));
-                setfilecon(upperdir.data(), con);
+                int f_uid = getuidof(info.data()), f_gid = getgidof(info.data()), f_mode = getmod(info.data());
+                LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
+                    con, f_uid, f_gid, f_mode, info.data());
+                if (chown(upperdir.data(), f_uid, f_gid) == -1) LOGE("chown failed [%s]\n", upperdir.data());
+                if (chmod(upperdir.data(), f_mode) == -1) LOGE("chmod failed [%s]\n", upperdir.data());
+                if (setfilecon(upperdir.data(), con) == -1) LOGE("setfilecon failed [%s]\n", upperdir.data());
                 freecon(con);
             }
             mkdirs(workerdir.data(), 0755);
@@ -314,10 +318,12 @@ int main(int argc, const char **argv) {
                     ss[0] = '\0';
                     auto sub = std::string(argv[1]) + "/upper" + s;
                     if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
-                        LOGD("clone attr [%s] from [%s]\n", con, s);
-                        chown(sub.data(), getuidof(s), getgidof(s));
-                        chmod(sub.data(), getmod(s));
-                        setfilecon(sub.data(), con);
+                        int f_uid = getuidof(s), f_gid = getgidof(s), f_mode = getmod(s);
+                        LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
+                             con, f_uid, f_gid, f_mode, s);
+                        if (chown(sub.data(), f_uid, f_gid) == -1) LOGE("chown failed [%s]\n", sub.data());
+                        if (chmod(sub.data(), f_mode) == -1) LOGE("chmod failed [%s]\n", sub.data());
+                        if (setfilecon(sub.data(), con) == -1) LOGE("setfilecon failed [%s]\n", sub.data());
                         freecon(con);
                     }
                     ss[0] = '/';
@@ -327,10 +333,12 @@ int main(int argc, const char **argv) {
             };
             {
                 if (mkdir(upperdir.data(), 0755) == 0 && getfilecon(info.data(), &con) >= 0) {
-                    LOGD("clone attr [%s] from [%s]\n", con, info.data());
-                    chown(upperdir.data(), getuidof(info.data()), getgidof(info.data()));
-                    chmod(upperdir.data(), getmod(info.data()));
-                    setfilecon(upperdir.data(), con);
+                    int f_uid = getuidof(info.data()), f_gid = getgidof(info.data()), f_mode = getmod(info.data());
+                    LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
+                        con, f_uid, f_gid, f_mode, info.data());
+                    if (chown(upperdir.data(), f_uid, f_gid) == -1) LOGE("chown failed [%s]\n", upperdir.data());
+                    if (chmod(upperdir.data(), f_mode) == -1) LOGE("chmod failed [%s]\n", upperdir.data());
+                    if (setfilecon(upperdir.data(), con) == -1) LOGE("setfilecon failed [%s]\n", upperdir.data());
                     freecon(con);
                 }
                 mkdirs(workerdir.data(), 0755);
