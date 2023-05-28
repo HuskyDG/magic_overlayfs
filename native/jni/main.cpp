@@ -2,19 +2,12 @@
 #include "logging.hpp"
 #include "mountinfo.hpp"
 #include "utils.hpp"
+#include "partition.hpp"
 
 using namespace std;
 
 #define xmount(a,b,c,d,e) verbose_mount(a,b,c,d,e)
 #define umount2(a,b) verbose_umount(a,b)
-
-#define UNDER(s) (starts_with(info.target.data(), s "/") || info.target == s)
-
-#define MAKEDIR(s) \
-    if (lstat("/" s, &st_part) == 0 && S_ISDIR(st_part.st_mode)) { \
-        mkdir(std::string(overlay_tmpdir + "/" s).data(), 0755); \
-        mount_list.push_back("/" s); \
-    }
 
 #define CLEANUP \
     LOGI("clean up\n"); \
@@ -32,37 +25,18 @@ static void collect_mounts() {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
         for (auto &info : current_mount_info) {
-            if (UNDER("/system") ||
-                 UNDER("/vendor") ||
-                 UNDER("/system_ext") ||
-                 UNDER("/product") ||
-                 UNDER("/odm") ||
-                 UNDER("/vendor_dlkm") ||
-                 UNDER("/odm_dlkm") ||
-                 UNDER("/my_custom") ||
-                 UNDER("/my_engineering") ||
-                 UNDER("/my_heytap") ||
-                 UNDER("/my_manifest") ||
-                 UNDER("/my_preload") ||
-                 UNDER("/my_product") ||
-                 UNDER("/my_region") ||
-                 UNDER("/my_stock") ||
-                 UNDER("/my_version") ||
-                 UNDER("/my_company") ||
-                 UNDER("/my_carrier") ||
-                 UNDER("/my_region") ||
-                 UNDER("/my_company") ||
-                 UNDER("/my_bigball") ||
-                 UNDER("/prism") ||
-                 UNDER("/optics")) {
-                for (auto &s : mountinfo) {
-                    //   /a/b/c <--- under a (skip)
-                    //   /a
-                    //   /a/b
-                    if (s.target == info.target || starts_with(info.target.data(), string(s.target + "/").data()))
-                        goto next_mountpoint;
+            for (auto &part : { SYSTEM_PARTITIONS }) {
+                if (starts_with(info.target.data(), string(string(part) + "/").data()) || info.target == part) {
+                    for (auto &s : mountinfo) {
+                        //   /a/b/c <--- under a (skip)
+                        //   /a
+                        //   /a/b
+                        if (s.target == info.target || starts_with(info.target.data(), string(s.target + "/").data()))
+                            goto next_mountpoint;
+                    }
+                    mountinfo.emplace_back(info);
+                    break;
                 }
-                mountinfo.emplace_back(info);
             }
             next_mountpoint:
             continue;
@@ -204,44 +178,23 @@ int main(int argc, const char **argv) {
     xmount("tmpfs", overlay_tmpdir.data(), "tmpfs", 0, nullptr);
     mkdir(std::string(overlay_tmpdir + "/master").data(), 0750);
 
-    {
-        struct stat st_part;
-        MAKEDIR("system")
-        MAKEDIR("vendor")
-        MAKEDIR("system_ext")
-        MAKEDIR("product")
-        MAKEDIR("odm")
-        MAKEDIR("vendor_dlkm")
-        MAKEDIR("odm_dlkm")
-        MAKEDIR("my_custom")
-        MAKEDIR("my_engineering")
-        MAKEDIR("my_heytap")
-        MAKEDIR("my_manifest")
-        MAKEDIR("my_preload")
-        MAKEDIR("my_product")
-        MAKEDIR("my_region")
-        MAKEDIR("my_stock")
-        MAKEDIR("my_version")
-        MAKEDIR("my_company")
-        MAKEDIR("my_carrier")
-        MAKEDIR("my_region")
-        MAKEDIR("my_company")
-        MAKEDIR("my_bigball")
-        MAKEDIR("prism")
-        MAKEDIR("optics")
+    for (auto &part : { SYSTEM_PARTITIONS }) {
+        struct stat st;
+        if (lstat(part, &st) == 0 && S_ISDIR(st.st_mode)) {
+            mkdir(std::string(overlay_tmpdir + part).data(), 0755);
+            mount_list.push_back(part);
+        }
     }
 
-    {
-        std::string masterdir = overlay_tmpdir + "/master";
-        if (!str_empty(OVERLAYLIST_env)) {
-            if (strchr(OVERLAYLIST_env, ':') != nullptr) {
-                std::string opts = "lowerdir=";
-                opts += OVERLAYLIST_env;
-                xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
-            } else {
-                xmount(OVERLAYLIST_env, masterdir.data(), nullptr, MS_BIND, nullptr);
-            }
-        }
+    if (!str_empty(OVERLAYLIST_env)) {
+		std::string masterdir = overlay_tmpdir + "/master";
+		if (strchr(OVERLAYLIST_env, ':') != nullptr) {
+			std::string opts = "lowerdir=";
+			opts += OVERLAYLIST_env;
+			xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
+		} else {
+			xmount(OVERLAYLIST_env, masterdir.data(), nullptr, MS_BIND, nullptr);
+		}
     }
     auto module_list = split_ro(OVERLAYLIST_env, ':');
 
