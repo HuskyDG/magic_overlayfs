@@ -72,6 +72,18 @@ static int unmount_ksu_overlay() {
     return 0;
 }
 
+static bool unshare_mount(const char *mnt_point) {
+    int fd = open(mnt_point, O_PATH);
+    if (fd < 0)
+        return false;
+    string fd_path = "/proc/self/fd/";
+    fd_path += std::to_string(fd);
+    bool ret = !mount("", fd_path.data(), nullptr, MS_PRIVATE | MS_REC, nullptr) &&
+               !mount("", fd_path.data(), nullptr, MS_SHARED | MS_REC, nullptr);
+    close(fd);
+    return ret;
+}
+
 static std::string get_lowerdirs(std::vector<std::string> list, const char *sub) {
     std::string lowerdir = "";
     for (auto it = list.begin(); it != list.end(); it++) {
@@ -409,8 +421,8 @@ int main(int argc, const char **argv) {
             mounted.clear();
             goto subtree_mounts; // fall back to mount subtree
         }
-        mount("", info.data(), nullptr, MS_PRIVATE | MS_REC, nullptr);
-        mount("", info.data(), nullptr, MS_SHARED | MS_REC, nullptr);
+        if (!unshare_mount(info.data()))
+            LOGE("unshare mount failed: [%s]\n", info.data());
         mounted.emplace_back(info);
     }
     goto inject_mirrors;
@@ -432,8 +444,8 @@ int main(int argc, const char **argv) {
                     LOGE("mount failed, skip!\n");
                     continue;
                 }
-                mount("", buf + strlen(overlay_tmpdir.data()), nullptr, MS_PRIVATE | MS_REC, nullptr);
-                mount("", buf + strlen(overlay_tmpdir.data()), nullptr, MS_SHARED | MS_REC, nullptr);
+                if (!unshare_mount(buf + strlen(overlay_tmpdir.data())))
+                    LOGE("unshare mount failed: [%s]\n", buf + strlen(overlay_tmpdir.data()));
                 mounted.emplace_back(buf + strlen(overlay_tmpdir.data()));
             }
             closedir(dirfp);
@@ -447,8 +459,8 @@ int main(int argc, const char **argv) {
             std::string mirror_dir = string(mirrors) + info;
             if (access(mirror_dir.data(), F_OK) == 0) {
                 xmount(info.data(), mirror_dir.data(), nullptr, MS_BIND | MS_REC, nullptr);
-                mount("", mirror_dir.data(), nullptr, MS_PRIVATE | MS_REC, nullptr);
-                mount("", mirror_dir.data(), nullptr, MS_SHARED | MS_REC, nullptr);
+                if (!unshare_mount(mirror_dir.data()))
+                    LOGE("unshare mount failed: [%s]\n", mirror_dir.data());
             }
         }
     }
