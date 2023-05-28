@@ -37,7 +37,6 @@ static void collect_mounts() {
                  UNDER("/system_ext") ||
                  UNDER("/product") ||
                  UNDER("/odm") ||
-                 UNDER("/oem") ||
                  UNDER("/vendor_dlkm") ||
                  UNDER("/odm_dlkm") ||
                  UNDER("/my_custom") ||
@@ -212,7 +211,6 @@ int main(int argc, const char **argv) {
         MAKEDIR("system_ext")
         MAKEDIR("product")
         MAKEDIR("odm")
-        MAKEDIR("oem")
         MAKEDIR("vendor_dlkm")
         MAKEDIR("odm_dlkm")
         MAKEDIR("my_custom")
