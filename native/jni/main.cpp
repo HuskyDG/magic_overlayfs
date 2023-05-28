@@ -268,7 +268,7 @@ int main(int argc, const char **argv) {
         std::string tmp_mount = overlay_tmpdir + info;
 
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker" + info;
+        std::string workerdir = std::string(argv[1]) + "/worker/inode:" + std::to_string(st.st_ino);
         std::string masterdir = overlay_tmpdir + "/master" + info;
         char *con;
         {
@@ -341,15 +341,17 @@ int main(int argc, const char **argv) {
     // if stock mount is file, then we bind mount it back
     for (auto &mnt : mountinfo) {
         auto info = mnt.target;
+        struct stat st;
+        if (stat(info.data(), &st))
+            continue;
         std::string tmp_mount = overlay_tmpdir + info;
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker" + info;
+        std::string workerdir = std::string(argv[1]) + "/worker/inode:" + std::to_string(st.st_ino);
         std::string masterdir = overlay_tmpdir + "/master" + info;
         bool module_node_is_dir = is_dir(masterdir.data());
         bool module_node_exist = fexist(masterdir.data());
         bool upper_node_is_dir = is_dir(upperdir.data());
         bool upper_node_exist = fexist(upperdir.data());
-        struct stat st;
         if (lstat(tmp_mount.data(), &st) != 0 || // target does not exist, it could be deleted by modules
             (((upper_node_exist && !upper_node_is_dir) ||
               (!upper_node_exist && module_node_exist && !module_node_is_dir)) && S_ISDIR(st.st_mode))) // module add file but original is folder
