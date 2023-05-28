@@ -11,7 +11,7 @@ using namespace std;
 #define UNDER(s) (starts_with(info.target.data(), s "/") || info.target == s)
 
 #define MAKEDIR(s) \
-    if (std::find(mountpoint.begin(), mountpoint.end(), "/" s) != mountpoint.end()) { \
+    if (lstat("/" s, &st_part) == 0 && S_ISDIR(st_part.st_mode)) { \
         mkdir(std::string(overlay_tmpdir + "/" s).data(), 0755); \
         mount_list.push_back("/" s); \
     }
@@ -23,12 +23,10 @@ using namespace std;
 
 int log_fd = -1;
 std::string overlay_tmpdir;
-std::vector<string> mountpoint;
 std::vector<mount_info> mountinfo;
 
 static void collect_mounts() {
     // sort mountinfo, skip unnecessary mounts
-    mountpoint.clear();
     mountinfo.clear();
     do {
         auto current_mount_info = parse_mount_info("self");
@@ -58,15 +56,13 @@ static void collect_mounts() {
                  UNDER("/my_bigball") ||
                  UNDER("/prism") ||
                  UNDER("/optics")) {
-                for (auto &s : mountpoint) {
+                for (auto &s : mountinfo) {
                     //   /a/b/c <--- under a (skip)
                     //   /a
                     //   /a/b
-                    if (s == info.target || starts_with(info.target.data(), string(s + "/").data()))
+                    if (s.target == info.target || starts_with(info.target.data(), string(s.target + "/").data()))
                         goto next_mountpoint;
                 }
-                //printf("new mount: %s\n", info.target.data());
-                mountpoint.emplace_back(info.target);
                 mountinfo.emplace_back(info);
             }
             next_mountpoint:
@@ -209,40 +205,33 @@ int main(int argc, const char **argv) {
     xmount("tmpfs", overlay_tmpdir.data(), "tmpfs", 0, nullptr);
     mkdir(std::string(overlay_tmpdir + "/master").data(), 0750);
 
-    struct mount_info system;
-    system.target = "/system";
-    system.type = "ext4";
-    if (std::find(mountpoint.begin(), mountpoint.end(), "/system") == mountpoint.end()) {
-        mountinfo.emplace_back(system);
-        mountpoint.emplace_back("/system");
+    {
+        struct stat st_part;
+        MAKEDIR("system")
+        MAKEDIR("vendor")
+        MAKEDIR("system_ext")
+        MAKEDIR("product")
+        MAKEDIR("odm")
+        MAKEDIR("oem")
+        MAKEDIR("vendor_dlkm")
+        MAKEDIR("odm_dlkm")
+        MAKEDIR("my_custom")
+        MAKEDIR("my_engineering")
+        MAKEDIR("my_heytap")
+        MAKEDIR("my_manifest")
+        MAKEDIR("my_preload")
+        MAKEDIR("my_product")
+        MAKEDIR("my_region")
+        MAKEDIR("my_stock")
+        MAKEDIR("my_version")
+        MAKEDIR("my_company")
+        MAKEDIR("my_carrier")
+        MAKEDIR("my_region")
+        MAKEDIR("my_company")
+        MAKEDIR("my_bigball")
+        MAKEDIR("prism")
+        MAKEDIR("optics")
     }
-
-    MAKEDIR("system")
-    MAKEDIR("vendor")
-    MAKEDIR("system_ext")
-    MAKEDIR("product")
-    MAKEDIR("odm")
-    MAKEDIR("oem")
-    MAKEDIR("vendor_dlkm")
-    MAKEDIR("odm_dlkm")
-    MAKEDIR("my_custom")
-    MAKEDIR("my_engineering")
-    MAKEDIR("my_heytap")
-    MAKEDIR("my_manifest")
-    MAKEDIR("my_preload")
-    MAKEDIR("my_product")
-    MAKEDIR("my_region")
-    MAKEDIR("my_stock")
-    MAKEDIR("my_version")
-    MAKEDIR("my_company")
-    MAKEDIR("my_carrier")
-    MAKEDIR("my_region")
-    MAKEDIR("my_company")
-    MAKEDIR("my_bigball")
-    MAKEDIR("prism")
-    MAKEDIR("optics")
-
-    mountpoint.clear();
 
     {
         std::string masterdir = overlay_tmpdir + "/master";
@@ -333,7 +322,6 @@ int main(int argc, const char **argv) {
                 }
             }
         }
-        mountpoint.emplace_back(info);
     }
 
     // restore stock mounts if possible
@@ -442,12 +430,9 @@ int main(int argc, const char **argv) {
             }
             
             mount_done:
-            mountpoint.emplace_back(info);
             break;
         }
     }
-
-    mountpoint.clear();
 
     LOGI("** Loading overlayfs\n");
     std::vector<string> mounted;
