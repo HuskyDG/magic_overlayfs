@@ -23,9 +23,12 @@ There is two way:
 
 - The KernelSU module is similar to Magisk in that it allows users to modify the system partition while maintaining system integrity. It does this through the implementation of overlayfs. However, it's important to note that KernelSU makes changes to the system partition by using read-only overlayfs, which also mounts on top of magic_overlayfs and prevent system from being remounted as read-write. If you want to remount your system partitions as read-write, you simply need to first unmount the KernelSU overlayfs using this command:
 
+```bash
+nsenter -t 1 -m sh
+overlayfs_system --unmount-ksu
 ```
-nsenter -t 1 -m overlayfs_system --unmount-ksu
-```
+
+or set `DO_UNMOUNT_KSU=true` in `/data/adb/modules(_update)/magisk_overlayfs/mode.sh`
 
 - After that you will be able to remount system as read-write
 
