@@ -1,6 +1,7 @@
 id=magisk_overlayfs
 name=Magical Overlayfs
 author=HuskyDG
-version=v3.0.2
-versionCode=30002
+version=v3.0.3
+versionCode=30003
 description=Use OverlayFS to make read-only system partitions become read-write partitions. OverlayFS MUST be supported by kernel!
+updateJson=https://github.com/huskydg/magic_overlayfs/releases/latest/download/update_release.json
