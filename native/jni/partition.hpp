@@ -1,4 +1,5 @@
-#define SYSTEM_PARTITIONS \
+
+std::vector<std::string> SYSTEM_PARTITIONS {
         "/system", \
         "/vendor", \
         "/system_ext", \
@@ -21,4 +22,4 @@
         "/my_company", \
         "/my_bigball", \
         "/prism", \
-        "/optics"
+        "/optics" };

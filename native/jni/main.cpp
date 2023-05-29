@@ -25,8 +25,8 @@ static void collect_mounts() {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
         for (auto &info : current_mount_info) {
-            for (auto &part : { SYSTEM_PARTITIONS }) {
-                if (starts_with(info.target.data(), string(string(part) + "/").data()) || info.target == part) {
+            for (auto &part : SYSTEM_PARTITIONS) {
+                if (starts_with(info.target.data(), string(part + "/").data()) || info.target == part) {
                     for (auto &s : mountinfo) {
                         //   /a/b/c <--- under a (skip)
                         //   /a
@@ -194,14 +194,6 @@ int main(int argc, const char **argv) {
     xmount("tmpfs", overlay_tmpdir.data(), "tmpfs", 0, nullptr);
     mkdir(std::string(overlay_tmpdir + "/master").data(), 0750);
 
-    for (auto &part : { SYSTEM_PARTITIONS }) {
-        struct stat st;
-        if (lstat(part, &st) == 0 && S_ISDIR(st.st_mode)) {
-            mkdir(std::string(overlay_tmpdir + part).data(), 0755);
-            mount_list.push_back(part);
-        }
-    }
-
     if (!str_empty(OVERLAYLIST_env)) {
         std::string masterdir = overlay_tmpdir + "/master";
         if (strchr(OVERLAYLIST_env, ':') != nullptr) {
@@ -217,11 +209,12 @@ int main(int argc, const char **argv) {
     LOGI("** Prepare mounts\n");
     // mount overlayfs for subdirectories of /system /vendor /product /system_ext
     std::reverse(mountinfo.begin(), mountinfo.end());
-    for (auto &info : mount_list) {
+    for (auto &info : SYSTEM_PARTITIONS ) {
         struct stat st;
-        if (stat(info.data(), &st))
+        if (lstat(info.data(), &st) || !S_ISDIR(st.st_mode))
             continue;
         std::string tmp_mount = overlay_tmpdir + info;
+        mkdirs(tmp_mount.data(), 0);
 
         std::string upperdir = std::string(argv[1]) + "/upper" + info;
         std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
@@ -292,6 +285,7 @@ int main(int argc, const char **argv) {
                     continue;
                 }
             }
+            mount_list.push_back(info);
         }
     }
 
