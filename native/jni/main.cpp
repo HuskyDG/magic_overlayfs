@@ -15,15 +15,15 @@ using namespace std;
     rmdir(overlay_tmpdir.data());
 
 int log_fd = -1;
-std::string overlay_tmpdir;
-std::vector<mount_info> mountinfo;
+string overlay_tmpdir;
+vector<mount_info> mountinfo;
 
 static void collect_mounts() {
     // sort mountinfo, skip unnecessary mounts
     mountinfo.clear();
     do {
         auto current_mount_info = parse_mount_info("self");
-        std::reverse(current_mount_info.begin(), current_mount_info.end());
+        reverse(current_mount_info.begin(), current_mount_info.end());
         for (auto &info : current_mount_info) {
             for (auto &part : SYSTEM_PARTITIONS) {
                 if (starts_with(info.target.data(), string(part + "/").data()) || info.target == part) {
@@ -54,7 +54,7 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
         if (mnt.type == "overlay" || mnt.type == "tmpfs") {
             int fd = open(info.data(), O_PATH);
             string fd_path = "/proc/self/fd/";
-            fd_path += std::to_string(fd);
+            fd_path += to_string(fd);
             LOGD("%s [%s] (%s)\n", (mount(nullptr, fd_path.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & ~exclude_flags) | flags, nullptr) == 0)?
                  "remounted" : "remount failed", info.data(), mnt.type.data());
             close(fd);
@@ -67,7 +67,7 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
 
 static int unmount_ksu_overlay() {
     collect_mounts();
-    std::reverse(mountinfo.begin(), mountinfo.end());
+    reverse(mountinfo.begin(), mountinfo.end());
     for (auto &mnt : mountinfo) {
         if (mnt.source == "KSU") {
             umount2(mnt.target.data(), MNT_DETACH);
@@ -81,15 +81,15 @@ static bool unshare_mount(const char *mnt_point) {
     if (fd < 0)
         return false;
     string fd_path = "/proc/self/fd/";
-    fd_path += std::to_string(fd);
+    fd_path += to_string(fd);
     bool ret = !mount("", fd_path.data(), nullptr, MS_PRIVATE | MS_REC, nullptr) &&
                !mount("", fd_path.data(), nullptr, MS_SHARED | MS_REC, nullptr);
     close(fd);
     return ret;
 }
 
-static std::string get_lowerdirs(std::vector<std::string> list, const char *sub) {
-    std::string lowerdir = "";
+static string get_lowerdirs(vector<string> list, const char *sub) {
+    string lowerdir = "";
     for (auto it = list.begin(); it != list.end(); it++) {
            auto dir = *it + sub;
            if (is_dir(dir.data()))
@@ -158,6 +158,21 @@ int main(int argc, const char **argv) {
 
     log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
     LOGI("* Mount OverlayFS started\n");
+    {
+        DIR *dirfp;
+        struct dirent *dp;
+        struct stat st;
+        if ((dirfp = opendir("/apex")) != nullptr) {
+            while ((dp = readdir(dirfp)) != nullptr) {
+                string apex_path = string("/apex/") + dp->d_name;
+                if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0 ||
+                lstat(apex_path.data(), &st) != 0 || !S_ISDIR(st.st_mode))
+                    continue;
+                SYSTEM_PARTITIONS.push_back(apex_path.data());
+            }
+            closedir(dirfp);
+        }
+    }
     collect_mounts();
 
     const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
@@ -169,7 +184,7 @@ int main(int argc, const char **argv) {
 
     const char *mirrors = nullptr;
     if (!str_empty(MAGISKTMP_env)) {
-        // use strdup as std::string, memory is automatically managed by the class and released when the string object goes out of scope
+        // use strdup as string, memory is automatically managed by the class and released when the string object goes out of scope
         mirrors = strdup(string(string(MAGISKTMP_env) + "/.magisk/mirror").data());
         if (stat(mirrors, &z) != 0 || !S_ISDIR(z.st_mode)) {
             free((void*)mirrors);    
@@ -181,23 +196,23 @@ int main(int argc, const char **argv) {
     }
 
     // list of directories should be mounted!
-    std::vector<string> mount_list;
+    vector<string> mount_list;
 
-    overlay_tmpdir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
+    overlay_tmpdir = string("/mnt/") + "overlayfs_" + random_strc(20);
     if (mkdirs(overlay_tmpdir.data(), 750) != 0) {
         LOGE("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
         return -1;
     }
-    mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
-    mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
+    mkdir(string(string(argv[1]) + "/upper").data(), 0750);
+    mkdir(string(string(argv[1]) + "/worker").data(), 0750);
 
     xmount("tmpfs", overlay_tmpdir.data(), "tmpfs", 0, nullptr);
-    mkdir(std::string(overlay_tmpdir + "/master").data(), 0750);
+    mkdir(string(overlay_tmpdir + "/master").data(), 0750);
 
     if (!str_empty(OVERLAYLIST_env)) {
-        std::string masterdir = overlay_tmpdir + "/master";
+        string masterdir = overlay_tmpdir + "/master";
         if (strchr(OVERLAYLIST_env, ':') != nullptr) {
-            std::string opts = "lowerdir=";
+            string opts = "lowerdir=";
             opts += OVERLAYLIST_env;
             xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
         } else {
@@ -208,24 +223,24 @@ int main(int argc, const char **argv) {
 
     LOGI("** Prepare mounts\n");
     // mount overlayfs for subdirectories of /system /vendor /product /system_ext
-    std::reverse(mountinfo.begin(), mountinfo.end());
+    reverse(mountinfo.begin(), mountinfo.end());
     for (auto &info : SYSTEM_PARTITIONS ) {
         struct stat st;
         if (lstat(info.data(), &st) || !S_ISDIR(st.st_mode))
             continue;
-        std::string tmp_mount = overlay_tmpdir + info;
+        string tmp_mount = overlay_tmpdir + info;
         mkdirs(tmp_mount.data(), 0);
 
-        std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
-        std::string masterdir = overlay_tmpdir + "/master" + info;
+        string upperdir = string(argv[1]) + "/upper" + info;
+        string workerdir = string(argv[1]) + "/worker/" + to_string(st.st_dev) + "/" + to_string(st.st_ino);
+        string masterdir = overlay_tmpdir + "/master" + info;
         char *con;
         {
             char *s = strdup(info.data());
             char *ss = s;
             while ((ss = strchr(ss, '/')) != nullptr) {
                 ss[0] = '\0';
-                auto sub = std::string(argv[1]) + "/upper" + s;
+                auto sub = string(argv[1]) + "/upper" + s;
                 if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
                     int f_uid = getuidof(s), f_gid = getgidof(s), f_mode = getmod(s);
                     LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
@@ -261,7 +276,7 @@ int main(int argc, const char **argv) {
             }
         }
         {
-            std::string opts;
+            string opts;
             opts += "lowerdir=";
             opts += get_lowerdirs(module_list, info.data());
             opts += info.data();
@@ -297,10 +312,10 @@ int main(int argc, const char **argv) {
         struct stat st;
         if (stat(info.data(), &st))
             continue;
-        std::string tmp_mount = overlay_tmpdir + info;
-        std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
-        std::string masterdir = overlay_tmpdir + "/master" + info;
+        string tmp_mount = overlay_tmpdir + info;
+        string upperdir = string(argv[1]) + "/upper" + info;
+        string workerdir = string(argv[1]) + "/worker/" + to_string(st.st_dev) + "/" + to_string(st.st_ino);
+        string masterdir = overlay_tmpdir + "/master" + info;
         bool module_node_is_dir = is_dir(masterdir.data());
         bool module_node_exist = fexist(masterdir.data());
         bool upper_node_is_dir = is_dir(upperdir.data());
@@ -326,7 +341,7 @@ int main(int argc, const char **argv) {
                 char *ss = s;
                 while ((ss = strchr(ss, '/')) != nullptr) {
                     ss[0] = '\0';
-                    auto sub = std::string(argv[1]) + "/upper" + s;
+                    auto sub = string(argv[1]) + "/upper" + s;
                     if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
                         int f_uid = getuidof(s), f_gid = getgidof(s), f_mode = getmod(s);
                         LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
@@ -361,7 +376,7 @@ int main(int argc, const char **argv) {
                 }
             }
             {
-                std::string opts;
+                string opts;
                 opts += "lowerdir=";
                 opts += get_lowerdirs(module_list, info.data());
                 opts += info.data();
@@ -404,15 +419,15 @@ int main(int argc, const char **argv) {
     }
 
     LOGI("** Loading overlayfs\n");
-    std::vector<string> mounted;
+    vector<string> mounted;
     for (auto &info : mount_list) {
-        std::string tmp_mount = overlay_tmpdir + info;
+        string tmp_mount = overlay_tmpdir + info;
         // OnePlus block mounting rw filesystem on /system, /vendor, etc...
         // https://github.com/lateautumn233/android_kernel_oneplus_sm8250/blob/2fb51004f2335f073a3ad6940a0abffdeccbe174/oplus/kernel/secureguard/rootguard/oplus_mount_block.c#L47
         if (xmount(tmp_mount.data(), info.data(), nullptr, MS_BIND | MS_REC | MS_RDONLY, nullptr)) {
             LOGE("mount failed, fall to mount subtree\n");
             // revert all mounts
-            std::reverse(mounted.begin(), mounted.end());
+            reverse(mounted.begin(), mounted.end());
             for (auto &dir : mounted) {
                 umount2(dir.data(), MNT_DETACH);
             }
@@ -431,7 +446,7 @@ int main(int argc, const char **argv) {
         struct dirent *dp;
         char buf[4098];
         struct stat st;
-        std::string tmp_mount = overlay_tmpdir + info;
+        string tmp_mount = overlay_tmpdir + info;
         if ((dirfp = opendir(tmp_mount.data())) != nullptr) {
             while ((dp = readdir(dirfp)) != nullptr) {
                 snprintf(buf, sizeof(buf) - 1, "%s/%s", tmp_mount.data(), dp->d_name);
@@ -454,7 +469,7 @@ int main(int argc, const char **argv) {
     if (mirrors != nullptr) {
         LOGI("** Loading overlayfs mirrors\n");
         for (auto &info : mounted) {
-            std::string mirror_dir = string(mirrors) + info;
+            string mirror_dir = string(mirrors) + info;
             if (access(mirror_dir.data(), F_OK) == 0) {
                 xmount(info.data(), mirror_dir.data(), nullptr, MS_BIND | MS_REC, nullptr);
                 if (!unshare_mount(mirror_dir.data()))
