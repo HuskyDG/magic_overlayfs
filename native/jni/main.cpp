@@ -161,6 +161,7 @@ int main(int argc, const char **argv) {
     collect_mounts();
 
     const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
+    const char *OVERLAY_LEGACY_MOUNT_env = xgetenv("OVERLAY_LEGACY_MOUNT");
     const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
     const char *MAGISKTMP_env = xgetenv("MAGISKTMP");
 
@@ -408,6 +409,8 @@ int main(int argc, const char **argv) {
 
     LOGI("** Loading overlayfs\n");
     std::vector<string> mounted;
+    if (OVERLAY_LEGACY_MOUNT_env && OVERLAY_LEGACY_MOUNT_env == string_view("true"))
+        goto subtree_mounts;
     for (auto &info : mount_list) {
         std::string tmp_mount = overlay_tmpdir + info;
         // OnePlus block mounting rw filesystem on /system, /vendor, etc...
