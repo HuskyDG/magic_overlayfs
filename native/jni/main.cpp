@@ -222,6 +222,8 @@ int main(int argc, const char **argv) {
     auto module_list = split_ro(OVERLAYLIST_env, ':');
 
     LOGI("** Prepare mounts\n");
+    auto selinux_mode = getenforce();
+    if (selinux_mode > 0) setenforce(0);
     // mount overlayfs for subdirectories of /system /vendor /product /system_ext
     reverse(mountinfo.begin(), mountinfo.end());
     for (auto &info : SYSTEM_PARTITIONS ) {
@@ -417,6 +419,7 @@ int main(int argc, const char **argv) {
             break;
         }
     }
+    if (selinux_mode > 0) setenforce(selinux_mode);
 
     LOGI("** Loading overlayfs\n");
     vector<string> mounted;

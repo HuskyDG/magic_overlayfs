@@ -188,4 +188,23 @@ std::vector<std::string> split_ro(const std::string& str, const char delimiter) 
     return result;
 }
 
+int getenforce() {
+    int fd = open("/sys/fs/selinux/enforce", O_RDONLY);
+    if (fd < 0) return -1;
+    char val = -1;
+    read(fd, &val, sizeof(val));
+    close(fd);
+    return (val == '0' || val == '1')? val - '0' : -1;
+}
+
+
+int setenforce(bool mode) {
+    int fd = open("/sys/fs/selinux/enforce", O_RDWR);
+    if (fd < 0) return -1;
+    char val = '0' + mode;
+    int ret = write(fd, &val, sizeof(val));
+    close(fd);
+    return ret;
+}
+
 
