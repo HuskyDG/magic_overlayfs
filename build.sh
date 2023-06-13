@@ -12,8 +12,6 @@ git clone "$2" "$1"
 }
 #      <DIRECTORY>                       <PLUG-IN LINK>
 plugin ./native/jni/libcxx               http://github.com/huskydg/libcxx || exit 1
-plugin ./native/jni/external/selinux     https://github.com/topjohnwu/selinux || exit 1
-plugin ./native/jni/external/pcre        https://android.googlesource.com/platform/external/pcre || exit 1
 
 pushd native
 rm -fr libs obj
