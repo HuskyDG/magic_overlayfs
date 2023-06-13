@@ -16,8 +16,22 @@ Benefits of using overlayfs for system partitions:
 ## Build
 
 There is two way:
+
+### GitHub Actions
 - Fork this repo and run github actions
-- Run `bash build.sh` (On Linux/WSL)
+
+### Linux/WSL
+
+1. Clone this repo to your device
+```
+git clone http://github.com/HuskyDG/Magisk_OverlayFS && cd Magisk_OverlayFS
+```
+2. Setup Android NDK in repository directory
+```
+wget https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
+unzip android-ndk-r23b-linux.zip
+```
+3. Run `bash build.sh`
 
 ## KernelSU problem
 
