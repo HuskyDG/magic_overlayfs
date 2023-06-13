@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <android/log.h>
 #include <sys/uio.h>
 #include <sys/time.h>
 #include <time.h>
@@ -13,19 +12,19 @@ void log_to_file(int fd, int prio, const char *log) {
     }
     char prio_c = 'I';
     switch (prio) {
-        case ANDROID_LOG_DEBUG:
+        case 1:
             prio_c = 'D';
             break;
-        case ANDROID_LOG_WARN:
+        case 2:
             prio_c = 'W';
             break;
-        case ANDROID_LOG_VERBOSE:
-            prio_c = 'V';
-            break;
-        case ANDROID_LOG_ERROR:
+        case 3:
             prio_c = 'E';
             break;
-        case ANDROID_LOG_FATAL:
+        case 4:
+            prio_c = 'V';
+            break;
+        case 5:
             prio_c = 'F';
             break;
         default:
