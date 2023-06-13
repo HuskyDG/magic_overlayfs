@@ -1,6 +1,6 @@
 #include "base.hpp"
 
-std::string random_strc(int n);
+char *random_strc(int n);
 bool starts_with(const char *s, const char *ss);
 bool is_dir(const char *path);
 bool is_lnk(const char *path);

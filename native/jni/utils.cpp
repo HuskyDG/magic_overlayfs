@@ -1,22 +1,22 @@
 #include "logging.hpp"
 #include "base.hpp"
 
-std::string random_strc(int n){
-    std::string result = "";
-    FILE *urandom = fopen("/dev/urandom", "re");
-    if (urandom == nullptr) return result;
-    char *str = new char[n+1];
+char *random_strc(int n){
+    int urandom_fd = open("/dev/urandom", O_RDONLY);
+    if (urandom_fd == -1) return nullptr;
+    char *str = (char*)malloc(sizeof(char)*(n+1));
     if (str == nullptr) {
-        fclose(urandom);
-        return result;
+        close(urandom_fd);
+        return nullptr;
     }
     for (int i=0;i<n;i++){
-        str[i] = 'a' + (fgetc(urandom) % ('z'-'a'+1));
+        char x = 0;
+        read(urandom_fd, &x, 1);
+        str[i] = 'a' + (x % ('z'-'a'+1));
     }
-    fclose(urandom);
-    result = str;
-    delete []str;
-    return result;
+    str[n] = '\0';
+    close(urandom_fd);
+    return str;
 }
 
 

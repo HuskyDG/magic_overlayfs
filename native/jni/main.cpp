@@ -15,7 +15,7 @@ using namespace std;
     rmdir(overlay_tmpdir.data());
 
 int log_fd = -1;
-std::string overlay_tmpdir;
+std::string overlay_tmpdir = "";
 std::vector<mount_info> mountinfo;
 
 static void collect_mounts() {
@@ -184,11 +184,11 @@ int main(int argc, const char **argv) {
     // list of directories should be mounted!
     std::vector<string> mount_list;
 
-    overlay_tmpdir = std::string("/mnt/") + "overlayfs_" + random_strc(20);
-    if (mkdirs(overlay_tmpdir.data(), 750) != 0) {
-        LOGE("Cannot create temp folder, please make sure /mnt is clean and write-able!\n");
-        return -1;
-    }
+    do {
+		char *random_string = random_strc(20);
+		overlay_tmpdir = std::string("/dev/.") + "worker_" + random_string;
+		free(random_string);
+    } while (mkdirs(overlay_tmpdir.data(), 750) != 0);
     mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
     mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
 

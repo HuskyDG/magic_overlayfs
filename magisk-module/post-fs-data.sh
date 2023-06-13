@@ -7,12 +7,8 @@ export MAGISKTMP="$(magisk --path)"
 chmod 777 "$MODDIR/overlayfs_system"
 
 OVERLAYDIR="/data/adb/overlay"
-OVERLAYMNT="/mnt/overlay"
-MODULEMNT="/mnt/loop"
-
-if [ ! -e "/mnt/vendor/system" ]; then
-    OVERLAYMNT="/mnt/vendor/system"
-fi
+OVERLAYMNT="/dev/mount_overlayfs"
+MODULEMNT="/dev/mount_loop"
 
 
 mv -fT /cache/overlayfs.log /cache/overlayfs.log.bak
