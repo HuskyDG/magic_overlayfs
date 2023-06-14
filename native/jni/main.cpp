@@ -14,6 +14,8 @@ using namespace std;
     umount2(overlay_tmpdir.data(), MNT_DETACH); \
     rmdir(overlay_tmpdir.data());
 
+#define TO_STR std::string("")
+
 int log_fd = -1;
 std::string overlay_tmpdir = "";
 std::vector<mount_info> mountinfo;
@@ -185,25 +187,23 @@ int main(int argc, const char **argv) {
     std::vector<string> mount_list;
 
     do {
-		char *random_string = random_strc(20);
-		overlay_tmpdir = std::string("/dev/.") + "worker_" + random_string;
-		free(random_string);
+        char *random_string = random_strc(20);
+        overlay_tmpdir = std::string("/dev/.") + "worker_" + random_string;
+        free(random_string);
     } while (mkdirs(overlay_tmpdir.data(), 750) != 0);
-    mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
-    mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
+    std::string upper = std::string(argv[1]) + "/upper";
+    std::string worker = std::string(argv[1]) + "/worker";
+    mkdir(upper.data(), 0750);
+    mkdirs((worker + "/empty").data(), 0750);
 
     xmount("tmpfs", overlay_tmpdir.data(), "tmpfs", 0, nullptr);
     mkdir(std::string(overlay_tmpdir + "/master").data(), 0750);
 
     if (!str_empty(OVERLAYLIST_env)) {
         std::string masterdir = overlay_tmpdir + "/master";
-        if (strchr(OVERLAYLIST_env, ':') != nullptr) {
-            std::string opts = "lowerdir=";
-            opts += OVERLAYLIST_env;
-            xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
-        } else {
-            xmount(OVERLAYLIST_env, masterdir.data(), nullptr, MS_BIND, nullptr);
-        }
+        std::string opts = "lowerdir=";
+        opts += TO_STR + OVERLAYLIST_env + ":" + worker + "/empty";
+        xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
     }
     auto module_list = split_ro(OVERLAYLIST_env, ':');
 
@@ -219,8 +219,8 @@ int main(int argc, const char **argv) {
         std::string tmp_mount = overlay_tmpdir + info;
         mkdirs(tmp_mount.data(), 0);
 
-        std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
+        std::string upperdir = upper + info;
+        std::string workerdir = worker + "/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
         std::string masterdir = overlay_tmpdir + "/master" + info;
         char *con;
         {
@@ -228,7 +228,7 @@ int main(int argc, const char **argv) {
             char *ss = s;
             while ((ss = strchr(ss, '/')) != nullptr) {
                 ss[0] = '\0';
-                auto sub = std::string(argv[1]) + "/upper" + s;
+                auto sub = upper + s;
                 if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
                     int f_uid = getuidof(s), f_gid = getgidof(s), f_mode = getmod(s);
                     LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
@@ -264,25 +264,26 @@ int main(int argc, const char **argv) {
             }
         }
         {
-            std::string opts;
-            opts += "lowerdir=";
-            opts += get_lowerdirs(module_list, info.data());
-            opts += info.data();
-            opts += ",upperdir=";
-            opts += upperdir;
-            opts += ",workdir=";
-            opts += workerdir;
+            std::string opts = TO_STR + 
+                    "lowerdir=" +
+                    get_lowerdirs(module_list, info.data()) +
+                    info +
+                    ",upperdir=" +
+                    upperdir +
+                    ",workdir=" +
+                    workerdir;
             
             // 0 - read-only
             // 1 - read-write default
             // 2 - read-only locked
             
             if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
-                opts = "lowerdir=";
-                opts += upperdir;
-                opts += ":";
-                opts += get_lowerdirs(module_list, info.data());
-                opts += info.data();
+                opts = TO_STR + 
+                    "lowerdir=" +
+                    upperdir +
+                    ":" +
+                    get_lowerdirs(module_list, info.data()) +
+                    info;
                 if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
                     LOGW("Unable to add [%s], ignore!\n", info.data());
                     continue;
@@ -301,8 +302,8 @@ int main(int argc, const char **argv) {
         if (stat(info.data(), &st))
             continue;
         std::string tmp_mount = overlay_tmpdir + info;
-        std::string upperdir = std::string(argv[1]) + "/upper" + info;
-        std::string workerdir = std::string(argv[1]) + "/worker/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
+        std::string upperdir = upper + info;
+        std::string workerdir = worker + "/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
         std::string masterdir = overlay_tmpdir + "/master" + info;
         bool module_node_is_dir = is_dir(masterdir.data());
         bool module_node_exist = fexist(masterdir.data());
@@ -329,7 +330,7 @@ int main(int argc, const char **argv) {
                 char *ss = s;
                 while ((ss = strchr(ss, '/')) != nullptr) {
                     ss[0] = '\0';
-                    auto sub = std::string(argv[1]) + "/upper" + s;
+                    auto sub = upper + s;
                     if (mkdir(sub.data(), 0755) == 0 && getfilecon(s, &con) >= 0) {
                         int f_uid = getuidof(s), f_gid = getgidof(s), f_mode = getmod(s);
                         LOGD("clone attr context=[%s] uid=[%d] gid=[%d] mode=[%d] from [%s]\n",
@@ -364,25 +365,26 @@ int main(int argc, const char **argv) {
                 }
             }
             {
-                std::string opts;
-                opts += "lowerdir=";
-                opts += get_lowerdirs(module_list, info.data());
-                opts += info.data();
-                opts += ",upperdir=";
-                opts += upperdir;
-                opts += ",workdir=";
-                opts += workerdir;
+            std::string opts = TO_STR + 
+                    "lowerdir=" +
+                    get_lowerdirs(module_list, info.data()) +
+                    info +
+                    ",upperdir=" +
+                    upperdir +
+                    ",workdir=" +
+                    workerdir;
                 
                 // 0 - read-only
                 // 1 - read-write default
                 // 2 - read-only locked
                 
                 if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
-                    opts = "lowerdir=";
-                    opts += upperdir;
-                    opts += ":";
-                    opts += get_lowerdirs(module_list, info.data());
-                    opts += info.data();
+                    opts = TO_STR + 
+                            "lowerdir=" +
+                            upperdir +
+                            ":" +
+                            get_lowerdirs(module_list, info.data()) +
+                            info;
                     if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
                         // for some reason, overlayfs does not support some filesystems such as vfat, tmpfs, f2fs
                         // then bind mount it back but we will not be able to modify its content
