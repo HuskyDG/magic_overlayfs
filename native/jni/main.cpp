@@ -365,26 +365,38 @@ int main(int argc, const char **argv) {
                 }
             }
             {
-            std::string opts = TO_STR + 
-                    "lowerdir=" +
-                    get_lowerdirs(module_list, info.data()) +
-                    info +
-                    ",upperdir=" +
-                    upperdir +
-                    ",workdir=" +
-                    workerdir;
-                
-                // 0 - read-only
-                // 1 - read-write default
-                // 2 - read-only locked
+                // parse to get context mount option
+                auto mount_opts = split_ro(mnt.fs_option, ',');
+                std::string context_opt = "";
+                for (auto &mnt_opt : mount_opts) {
+                   if (starts_with(mnt_opt.data(), "context=")) {
+                       context_opt = mnt_opt;
+                       break;
+                   }
+                }
+                std::string opts = TO_STR +
+                        "lowerdir=" +
+                        get_lowerdirs(module_list, info.data()) +
+                        info +
+                        ",upperdir=" +
+                        upperdir +
+                        ",workdir=" +
+                        workerdir;
+                if (!str_empty(context_opt.data()))
+                    opts += TO_STR + "," + context_opt;
+                    // 0 - read-only
+                    // 1 - read-write default
+                    // 2 - read-only locked
                 
                 if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
-                    opts = TO_STR + 
+                    opts = TO_STR +
                             "lowerdir=" +
                             upperdir +
                             ":" +
                             get_lowerdirs(module_list, info.data()) +
                             info;
+                    if (!str_empty(context_opt.data()))
+                        opts += TO_STR + "," + context_opt;
                     if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
                         // for some reason, overlayfs does not support some filesystems such as vfat, tmpfs, f2fs
                         // then bind mount it back but we will not be able to modify its content
