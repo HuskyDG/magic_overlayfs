@@ -18,4 +18,3 @@
 #include <sys/vfs.h>
 #include <sys/mount.h>
 #include <sys/xattr.h>
-#include <sched.h>
