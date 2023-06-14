@@ -11,6 +11,7 @@ using namespace std;
 
 #define CLEANUP \
     LOGI("clean up\n"); \
+    setns(orig_ns, 0); \
     umount2(overlay_tmpdir.data(), MNT_DETACH); \
     rmdir(overlay_tmpdir.data());
 
@@ -192,7 +193,13 @@ int main(int argc, const char **argv) {
     mkdir(std::string(std::string(argv[1]) + "/upper").data(), 0750);
     mkdir(std::string(std::string(argv[1]) + "/worker").data(), 0750);
 
+    int orig_ns = open("/proc/self/ns/mnt", O_RDONLY);
     xmount("tmpfs", overlay_tmpdir.data(), "tmpfs", 0, nullptr);
+    if (unshare(CLONE_NEWNS) == -1) {
+	    LOGE("Failed to unshare\n");
+	    CLEANUP
+    }
+    xmount(nullptr, overlay_tmpdir.data(), nullptr, MS_PRIVATE, nullptr);
     mkdir(std::string(overlay_tmpdir + "/master").data(), 0750);
 
     if (!str_empty(OVERLAYLIST_env)) {
