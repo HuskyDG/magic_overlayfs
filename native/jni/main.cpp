@@ -16,6 +16,8 @@ using namespace std;
 
 #define TO_STR std::string("")
 
+#define MNT_FLAGS (MS_LAZYTIME | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_DIRSYNC | MS_NOATIME | MS_NODIRATIME | MS_RELATIME | MS_STRICTATIME | MS_NOSYMFOLLOW | MS_MANDLOCK | MS_SILENT)
+
 int log_fd = -1;
 std::string overlay_tmpdir = "";
 std::vector<mount_info> mountinfo;
@@ -57,7 +59,7 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
             int fd = open(info.data(), O_PATH);
             string fd_path = "/proc/self/fd/";
             fd_path += std::to_string(fd);
-            LOGD("%s [%s] (%s)\n", (mount(nullptr, fd_path.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & ~exclude_flags) | flags, nullptr) == 0)?
+            LOGD("%s [%s] (%s)\n", (mount(nullptr, fd_path.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & MNT_FLAGS & ~exclude_flags) | flags, nullptr) == 0)?
                  "remounted" : "remount failed", info.data(), mnt.type.data());
             close(fd);
         } else {
@@ -214,8 +216,10 @@ int main(int argc, const char **argv) {
     std::reverse(mountinfo.begin(), mountinfo.end());
     for (auto &info : SYSTEM_PARTITIONS ) {
         struct stat st;
+        struct statvfs FS_BUF;
         if (lstat(info.data(), &st) || !S_ISDIR(st.st_mode))
             continue;
+        statvfs(info.data(), &FS_BUF);
         std::string tmp_mount = overlay_tmpdir + info;
         mkdirs(tmp_mount.data(), 0);
 
@@ -277,14 +281,14 @@ int main(int argc, const char **argv) {
             // 1 - read-write default
             // 2 - read-only locked
             
-            if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
+            if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                 opts = TO_STR + 
                     "lowerdir=" +
                     upperdir +
                     ":" +
                     get_lowerdirs(module_list, info.data()) +
                     info;
-                if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
+                if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                     LOGW("Unable to add [%s], ignore!\n", info.data());
                     continue;
                 }
@@ -299,8 +303,10 @@ int main(int argc, const char **argv) {
     for (auto &mnt : mountinfo) {
         auto info = mnt.target;
         struct stat st;
+        struct statvfs FS_BUF;
         if (stat(info.data(), &st))
             continue;
+        statvfs(info.data(), &FS_BUF);
         std::string tmp_mount = overlay_tmpdir + info;
         std::string upperdir = upper + info;
         std::string workerdir = worker + "/" + std::to_string(st.st_dev) + "/" + std::to_string(st.st_ino);
@@ -388,7 +394,7 @@ int main(int argc, const char **argv) {
                     // 1 - read-write default
                     // 2 - read-only locked
                 
-                if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
+                if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                     opts = TO_STR +
                             "lowerdir=" +
                             upperdir +
@@ -397,7 +403,7 @@ int main(int argc, const char **argv) {
                             info;
                     if (!str_empty(context_opt.data()))
                         opts += TO_STR + "," + context_opt;
-                    if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | MS_NOATIME, opts.data())) {
+                    if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                         // for some reason, overlayfs does not support some filesystems such as vfat, tmpfs, f2fs
                         // then bind mount it back but we will not be able to modify its content
                         LOGW("mount overlayfs failed, fall to bind mount!\n");

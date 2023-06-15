@@ -1,5 +1,6 @@
 #include "logging.hpp"
 #include "base.hpp"
+#include "utils.hpp"
 
 char *random_strc(int n){
     int urandom_fd = open("/dev/urandom", O_RDONLY);
@@ -29,7 +30,7 @@ bool fexist(const char *path) {
     struct stat st;
     return lstat(path, &st) == 0;
 }
-	
+    
 
 bool is_dir(const char *path) {
     struct stat st;
@@ -142,9 +143,35 @@ int dump_file(const char *src, const char *dest) {
 
 int verbose_mount(const char *a, const char *b, const char *c, int d, const char *e) {
     int ret = mount(a,b,c,d,e);
+    std::string mount_opts = "";
+    if (d & MS_PRIVATE) mount_opts += ",private";
+    else if (d & MS_SLAVE) mount_opts += ",slave";
+    else if (d & MS_SHARED) mount_opts += ",shared";
+    else if (d & MS_UNBINDABLE) mount_opts += ",unbindable";
+    else {
+        if (d & MS_RDONLY) mount_opts += ",ro"; else if ((d & MS_BIND) == 0) mount_opts += ",rw";
+        if (d & MS_LAZYTIME) mount_opts += ",lazytime";
+        if (d & MS_NODEV) mount_opts += ",nodev";
+        if (d & MS_NOEXEC) mount_opts += ",noexec";
+        if (d & MS_NOSUID) mount_opts += ",nosuid";
+        if (d & MS_SYNCHRONOUS) mount_opts += ",sync";
+        if (d & MS_NOATIME) mount_opts += ",noatime";
+        if (d & MS_NODIRATIME) mount_opts += ",nodiratime";
+        if (d & MS_RELATIME) mount_opts += ",relatime";
+        if (d & MS_STRICTATIME) mount_opts += ",strictatime";
+        if (d & MS_NOSYMFOLLOW) mount_opts += ",nosymfollow";
+        if (d & MS_MANDLOCK) mount_opts += ",mand";
+        if (d & MS_SILENT) mount_opts += ",silent";
+        if (d & MS_REMOUNT) mount_opts += ",remount";
+        if (d & MS_BIND) mount_opts += ",bind";
+    }
+    if (d & MS_REC) mount_opts += ",rec";
+    if (e) {
+        mount_opts += std::string(",") + e;
+    }
     if (ret == 0) {
         LOGD("mount: %s%s%s%s\n", b, (a != nullptr && a[0] != '\0')? std::string(std::string(" <- ") + a).data() : "",
-            c? std::string(std::string(" (") + c + ")").data() : "", e? std::string(std::string(" [") + e + "]").data() : "");
+            c? std::string(std::string(" (") + c + ")").data() : "", (!str_empty(mount_opts.data()))? std::string(std::string(" [") + (mount_opts.data() + 1) + "]").data() : "");
     } else {
         PLOGE("mount: %s%s", (a != nullptr && a[0] != '\0')? std::string(std::string(a) + " -> ").data() : "", b);
     }
@@ -217,6 +244,6 @@ int setfilecon(const char *path, const char *con) {
 }
 
 void freecon(char *con) {
-	free(con);
+    free(con);
 }
 
