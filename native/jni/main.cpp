@@ -69,13 +69,30 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
     return 0;
 }
 
+#include <set>
+
 static int unmount_ksu_overlay() {
     collect_mounts();
-    std::reverse(mountinfo.begin(), mountinfo.end());
+    std::set<std::string> targets;
     for (auto &mnt : mountinfo) {
         if (mnt.source == "KSU") {
-            umount2(mnt.target.data(), MNT_DETACH);
+            targets.insert(mnt.target);
         }
+    }
+    if (targets.empty()) return 0;
+
+    auto last_target = *targets.cbegin() + '/';
+    for (auto iter = next(targets.cbegin()); iter != targets.cend();) {
+        if (starts_with((*iter).data(), last_target.data())) {
+            iter = targets.erase(iter);
+        } else {
+            last_target = *iter++ + '/';
+        }
+    }
+
+    for (auto &s : targets) {
+        mount(nullptr, s.data(), nullptr, MS_PRIVATE | MS_REC, nullptr);
+        umount2(s.data(), MNT_DETACH);
     }
     return 0;
 }
