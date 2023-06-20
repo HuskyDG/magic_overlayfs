@@ -466,6 +466,8 @@ int main(int argc, const char **argv) {
             mounted.clear();
             goto subtree_mounts; // fall back to mount subtree
         }
+        if (!unshare_mount(info.data()))
+            LOGE("unshare mount failed: [%s]\n", info.data());
         mounted.emplace_back(info);
     }
     goto inject_mirrors;
@@ -487,6 +489,8 @@ int main(int argc, const char **argv) {
                     LOGE("mount failed, skip!\n");
                     continue;
                 }
+                if (!unshare_mount(buf + strlen(overlay_tmpdir.data())))
+                    LOGE("unshare mount failed: [%s]\n", buf + strlen(overlay_tmpdir.data()));
                 mounted.emplace_back(buf + strlen(overlay_tmpdir.data()));
             }
             closedir(dirfp);
