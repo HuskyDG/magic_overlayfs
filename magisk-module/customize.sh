@@ -121,13 +121,8 @@ mkdir -p "$MODPATH/system/bin"
 chcon -R u:object_r:system_file:s0 "$MODPATH/system"
 chmod -R 755 "$MODPATH/system"
 
-cp -af "$MODPATH/overlayfs_system" "$MODPATH/system/bin"
+ln "$MODPATH/overlayfs_system" "$MODPATH/system/bin"
 ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_rw"
 ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_ro"
-
-if [ "$BOOTMODE" ] && [ -z "$KSU" ]; then
-    . "$MODPATH/util_functions.sh"
-    support_overlayfs && rm -rf "$MODPATH/system"
-fi
 
 ui_print
