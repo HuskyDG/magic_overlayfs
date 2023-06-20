@@ -30,7 +30,7 @@ static std::vector<mount_info> collect_mounts() {
         for (auto &info : current_mount_info) {
             for (auto &part : SYSTEM_PARTITIONS) {
                 if (starts_with(info.target.data(), string(part + "/").data()) || info.target == part) {
-                    for (auto &s : mountinfo) {
+                    for (auto &s : reversed(mountinfo)) {
                         //   /a/b/c <--- under a (skip)
                         //   /a
                         //   /a/b

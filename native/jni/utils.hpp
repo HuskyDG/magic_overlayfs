@@ -23,3 +23,23 @@ int getfilecon(const char *path, char **con);
 int setfilecon(const char *path, const char *con);
 void freecon(char *con);
 
+template <typename T>
+class reversed_container {
+public:
+    reversed_container(T &base) : base(base) {}
+    decltype(std::declval<T>().rbegin()) begin() { return base.rbegin(); }
+    decltype(std::declval<T>().crbegin()) begin() const { return base.crbegin(); }
+    decltype(std::declval<T>().crbegin()) cbegin() const { return base.crbegin(); }
+    decltype(std::declval<T>().rend()) end() { return base.rend(); }
+    decltype(std::declval<T>().crend()) end() const { return base.crend(); }
+    decltype(std::declval<T>().crend()) cend() const { return base.crend(); }
+private:
+    T &base;
+};
+
+template <typename T>
+reversed_container<T> reversed(T &base) {
+    return reversed_container<T>(base);
+}
+
+
