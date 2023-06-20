@@ -183,6 +183,8 @@ int main(int argc, const char **argv) {
 
     log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
     LOGI("* Mount OverlayFS started\n");
+    int init_mnt_ns = open("/proc/1/ns/mnt", O_RDONLY);
+    if (init_mnt_ns >= 0 && setns(init_mnt_ns, 0) == 0) LOGI("Switched to init mount namespace\n");
     std::vector<mount_info> mountinfo = collect_mounts();
 
     const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
