@@ -20,11 +20,10 @@ using namespace std;
 
 int log_fd = -1;
 std::string overlay_tmpdir = "";
-std::vector<mount_info> mountinfo;
 
-static void collect_mounts() {
+static std::vector<mount_info> collect_mounts() {
     // sort mountinfo, skip unnecessary mounts
-    mountinfo.clear();
+    std::vector<mount_info> mountinfo;
     do {
         auto current_mount_info = parse_mount_info("self");
         std::reverse(current_mount_info.begin(), current_mount_info.end());
@@ -46,10 +45,11 @@ static void collect_mounts() {
             continue;
         }
     } while(false);
+    return mountinfo;
 }
 
 static int do_remount(int flags = 0, int exclude_flags = 0) {
-    collect_mounts();
+    std::vector<mount_info> mountinfo = collect_mounts();
     struct statvfs stvfs{};
     exclude_flags |= MS_BIND;
     for (auto &mnt : mountinfo) {
@@ -72,7 +72,7 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
 #include <set>
 
 static int unmount_ksu_overlay() {
-    collect_mounts();
+    std::vector<mount_info> mountinfo = collect_mounts();
     std::set<std::string> targets;
     for (auto &mnt : mountinfo) {
         if (mnt.source == "KSU") {
@@ -179,7 +179,7 @@ int main(int argc, const char **argv) {
 
     log_fd = open("/cache/overlayfs.log", O_RDWR | O_CREAT | O_APPEND, 0666);
     LOGI("* Mount OverlayFS started\n");
-    collect_mounts();
+    std::vector<mount_info> mountinfo = collect_mounts();
 
     const char *OVERLAY_MODE_env = xgetenv("OVERLAY_MODE");
     const char *OVERLAY_LEGACY_MOUNT_env = xgetenv("OVERLAY_LEGACY_MOUNT");
