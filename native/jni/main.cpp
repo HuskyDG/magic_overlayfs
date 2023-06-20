@@ -34,9 +34,13 @@ static std::vector<mount_info> collect_mounts() {
                         //   /a/b/c <--- under a (skip)
                         //   /a
                         //   /a/b
-                        if (s.target == info.target || starts_with(info.target.data(), string(s.target + "/").data()))
+                        if (s.target == info.target || starts_with(info.target.data(), string(s.target + "/").data())) {
+                            LOGD("mountinfo: mountpoint %s is hidden under %s\n", info.target.data(), s.target.data());
                             goto next_mountpoint;
+                        }
                     }
+                    LOGD("mountinfo: device (%u:%u)%s on %s type %s (%s)\n", major(info.device), minor(info.device), 
+                        (info.root != "/")? info.root.data() : "", info.target.data(), info.type.data(), info.fs_option.data());
                     mountinfo.emplace_back(info);
                     break;
                 }
@@ -60,7 +64,7 @@ static int do_remount(int flags = 0, int exclude_flags = 0) {
             string fd_path = "/proc/self/fd/";
             fd_path += std::to_string(fd);
             LOGD("%s [%s] (%s)\n", (mount(nullptr, fd_path.data(), nullptr, MS_REMOUNT | (stvfs.f_flag & MNT_FLAGS & ~exclude_flags) | flags, nullptr) == 0)?
-                 "remounted" : "remount failed", info.data(), mnt.type.data());
+                 "remounted success" : "remount failed", info.data(), mnt.type.data());
             close(fd);
         } else {
             LOGD("%s [%s] (%s)\n", "skipped", info.data(), mnt.type.data());
