@@ -211,7 +211,7 @@ int main(int argc, const char **argv) {
                 int kmajor = 0, kminor = 0;
                 sscanf(linux_version, "Linux version %d.%d", &kmajor, &kminor);
                 LOGD("Kernel version: %d.%d\n", kmajor, kminor);
-                if (ksu_version >= 10940 && OVERLAY_MODE == 2 && kmajor >= 5 && kminor >= 10) {
+                if (ksu_version >= 10940 && OVERLAY_MODE == 2 && kmajor >= 5 && kminor >= 9) {
                     overlay_name = "KSU";
                     LOGD("Enabled KernelSU auto unmount\n");
                 }
