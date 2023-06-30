@@ -194,6 +194,9 @@ int main(int argc, const char **argv) {
     const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
     const char *MAGISKTMP_env = xgetenv("MAGISKTMP");
 
+    if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
+    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
+
     int32_t ksu_version = -1;
     prctl(0xdeadbeef, 2, &ksu_version, 0, 0);
     if (ksu_version >= 0) {
@@ -208,13 +211,14 @@ int main(int argc, const char **argv) {
                 int kmajor = 0, kminor = 0;
                 sscanf(linux_version, "Linux version %d.%d", &kmajor, &kminor);
                 LOGD("Kernel version: %d.%d\n", kmajor, kminor);
+                if (ksu_version >= 10940 && OVERLAY_MODE == 2 && kmajor >= 5 && kminor >= 10) {
+                    overlay_name = "KSU";
+                    LOGD("Enabled KernelSU auto unmount\n");
+                }
             }
         }
         close(version_fd);
     }
-
-    if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
-    int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
 
     const char *mirrors = nullptr;
     if (!str_empty(MAGISKTMP_env)) {
