@@ -192,6 +192,12 @@ int main(int argc, const char **argv) {
     const char *OVERLAYLIST_env = xgetenv("OVERLAYLIST");
     const char *MAGISKTMP_env = xgetenv("MAGISKTMP");
 
+    int32_t ksu_version = -1;
+    prctl(0xdeadbeef, 2, &ksu_version, 0, 0);
+    if (ksu_version >= 0) {
+        LOGD("KernelSU (%d) is working\n", ksu_version);
+    }
+
     if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
     int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
 
