@@ -21,6 +21,8 @@ using namespace std;
 int log_fd = -1;
 std::string overlay_tmpdir = "";
 
+const char *overlay_name = "overlay";
+
 static std::vector<mount_info> collect_mounts() {
     // sort mountinfo, skip unnecessary mounts
     std::vector<mount_info> mountinfo;
@@ -197,6 +199,19 @@ int main(int argc, const char **argv) {
     if (ksu_version >= 0) {
         LOGD("KernelSU (%d) is working\n", ksu_version);
     }
+    {
+        char buf[1024];
+        int version_fd = open("/proc/version", O_RDONLY);
+        if (read(version_fd, buf, sizeof(buf)-1) > 0) {
+            char *linux_version = strstr(buf, "Linux version ");
+            if (linux_version != nullptr) {
+                int kmajor = 0, kminor = 0;
+                sscanf(linux_version, "Linux version %d.%d", &kmajor, &kminor);
+                LOGD("Kernel version: %d.%d\n", kmajor, kminor);
+            }
+        }
+        close(version_fd);
+    }
 
     if (OVERLAYLIST_env == nullptr) OVERLAYLIST_env = "";
     int OVERLAY_MODE = (OVERLAY_MODE_env)? atoi(OVERLAY_MODE_env) : 0;
@@ -234,7 +249,7 @@ int main(int argc, const char **argv) {
         std::string masterdir = overlay_tmpdir + "/master";
         std::string opts = "lowerdir=";
         opts += TO_STR + OVERLAYLIST_env + ":" + worker + "/empty";
-        xmount("overlay", masterdir.data(), "overlay", 0, opts.data());
+        xmount(overlay_name, masterdir.data(), "overlay", 0, opts.data());
     }
     auto module_list = split_ro(OVERLAYLIST_env, ':');
 
@@ -310,14 +325,14 @@ int main(int argc, const char **argv) {
             // 1 - read-write default
             // 2 - read-only locked
             
-            if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
+            if (OVERLAY_MODE == 2 || xmount(overlay_name, tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                 opts = TO_STR + 
                     "lowerdir=" +
                     upperdir +
                     ":" +
                     get_lowerdirs(module_list, info.data()) +
                     info;
-                if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
+                if (xmount(overlay_name, tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                     LOGW("Unable to add [%s], ignore!\n", info.data());
                     continue;
                 }
@@ -423,7 +438,7 @@ int main(int argc, const char **argv) {
                     // 1 - read-write default
                     // 2 - read-only locked
                 
-                if (OVERLAY_MODE == 2 || xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
+                if (OVERLAY_MODE == 2 || xmount(overlay_name, tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                     opts = TO_STR +
                             "lowerdir=" +
                             upperdir +
@@ -432,7 +447,7 @@ int main(int argc, const char **argv) {
                             info;
                     if (!str_empty(context_opt.data()))
                         opts += TO_STR + "," + context_opt;
-                    if (xmount("overlay", tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
+                    if (xmount(overlay_name, tmp_mount.data(), "overlay", MS_RDONLY | (FS_BUF.f_flag & MNT_FLAGS), opts.data())) {
                         // for some reason, overlayfs does not support some filesystems such as vfat, tmpfs, f2fs
                         // then bind mount it back but we will not be able to modify its content
                         LOGW("mount overlayfs failed, fall to bind mount!\n");
