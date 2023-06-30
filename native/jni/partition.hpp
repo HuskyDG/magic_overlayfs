@@ -22,4 +22,5 @@ std::vector<std::string> SYSTEM_PARTITIONS {
         "/my_company", \
         "/my_bigball", \
         "/prism", \
-        "/optics" };
+        "/optics", \
+        "/oem" };
