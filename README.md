@@ -100,7 +100,10 @@ fi
 
 ## Bugreport
 
-- Please include `/cache/overlayfs.log`
+- Magisk/KernelSU version
+- Magisk/KernelSU logs
+- `/cache/overlayfs.log`
+- logcat, dmesg, ...
 
 ## Reset overlayfs
 
