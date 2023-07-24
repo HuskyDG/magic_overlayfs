@@ -124,5 +124,7 @@ chmod -R 755 "$MODPATH/system"
 ln "$MODPATH/overlayfs_system" "$MODPATH/system/bin"
 ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_rw"
 ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_ro"
+. "$MODPATH/util_functions.sh"
+support_overlayfs && rm -rf "$MODPATH/system"
 
 ui_print
