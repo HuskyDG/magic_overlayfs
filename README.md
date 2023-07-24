@@ -87,7 +87,6 @@ su -mm -c magic_remount_ro
 ```bash
 OVERLAY_IMAGE_EXTRA=0     # number of kb need to be added to overlay.img
 OVERLAY_IMAGE_SHRINK=true # shrink overlay.img or not?
-INCLUDE_MAGIC_MOUNT=false # enable legacy Magisk mount
 
 # Only use OverlayFS if Magisk_OverlayFS is installed
 if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
