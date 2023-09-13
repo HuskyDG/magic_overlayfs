@@ -7,6 +7,3 @@ export OVERLAY_MODE=0
 
 # Set to true to enable legacy mode that mount overlayfs on subdirectories instead of root partititons
 export OVERLAY_LEGACY_MOUNT=false
-
-# If you are using KernelSU, set this to true to unmount KernelSU overlayfs
-export DO_UNMOUNT_KSU=false

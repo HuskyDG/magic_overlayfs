@@ -127,4 +127,9 @@ ln -s "./overlayfs_system" "$MODPATH/system/bin/magic_remount_ro"
 . "$MODPATH/util_functions.sh"
 support_overlayfs && rm -rf "$MODPATH/system"
 
+if [ "$KSU" == true ] && [ "$KSU_VER_CODE" -ge 11210 ]; then
+    ui_print "- Using post mount mode"
+    mv -f "$MODPATH/post-fs-data.sh" "$MODPATH/post-mount.sh"
+fi
+
 ui_print
