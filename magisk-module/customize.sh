@@ -132,4 +132,7 @@ if [ "$KSU" == true ] && [ "$KSU_VER_CODE" -ge 11210 ]; then
     mv -f "$MODPATH/post-fs-data.sh" "$MODPATH/post-mount.sh"
 fi
 
+ui_print "- I am having financial difficulties"
+ui_print "- If you like my work, you can donate at http://paypal.me/huskydg"
+
 ui_print

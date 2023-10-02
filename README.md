@@ -133,6 +133,10 @@ export MAGISKTMP="$(magisk --path)"
 ./overlayfs_system "$WRITEABLE"
 ```
 
+## Donate
+
+- I am having financial difficulties. If you like my work, you can donate at http://paypal.me/huskydg
+
 ## Source code
 
 - <http://github.com/HuskyDG/Magisk_OverlayFS>
