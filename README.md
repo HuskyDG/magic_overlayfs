@@ -135,7 +135,7 @@ export MAGISKTMP="$(magisk --path)"
 
 ## Donate
 
-- I am having financial difficulties. If you like my work, you can donate at http://paypal.me/huskydg
+- If you like my work, you can donate at http://paypal.me/huskydg
 
 ## Source code
 
